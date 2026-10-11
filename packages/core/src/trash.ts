@@ -3,7 +3,7 @@ import { encodeId } from "./id";
 import { DIRECTORY_MIME, mimeOf } from "./mime";
 import { dirname, joinPath, normalizePath } from "./path";
 import { mapLimit, readAll } from "./stream";
-import type { DriverStat, Entry, EntryKind, VolumePath } from "./types";
+import type { DriverStat, Entry, EntryChange, EntryKind, VolumePath } from "./types";
 import type { Volume } from "./volume";
 
 /**
@@ -106,8 +106,11 @@ export async function moveToTrash(vol: Volume, stat: DriverStat): Promise<Entry>
   return toEntry(vol, tid, meta);
 }
 
-/** Lists trashed items, permanently removing the ones older than the retention period. */
-export async function listTrash(vol: Volume): Promise<Entry[]> {
+/**
+ * Lists trashed items, permanently removing the ones older than the retention period (each one is
+ * recorded in `changes` as `purged`).
+ */
+export async function listTrash(vol: Volume, changes?: EntryChange[]): Promise<Entry[]> {
   if (!(await vol.driver.stat(TRASH_ROOT))) return [];
   const children = await vol.driver.list(TRASH_ROOT);
   const dirs = new Set(children.filter((c) => c.kind === "dir").map((c) => c.name));
@@ -126,6 +129,7 @@ export async function listTrash(vol: Volume): Promise<Entry[]> {
     }
     if (meta.deletedAt < expiry) {
       await purgeOne(vol, tid);
+      changes?.push({ type: "purged", volume: vol.id, trashId: tid });
       return null;
     }
     return toEntry(vol, tid, meta);
@@ -138,8 +142,11 @@ export async function countTrash(vol: Volume): Promise<number> {
   return (await vol.driver.list(TRASH_ROOT)).filter((c) => c.kind === "file" && c.name.endsWith(".json")).length;
 }
 
-/** Puts an item back where it was. Missing folders are recreated; name clashes get a numbered name. */
-export async function restoreFromTrash(vol: Volume, tid: string): Promise<Entry> {
+/**
+ * Puts an item back where it was. Missing folders are recreated; name clashes get a numbered name.
+ * Recorded in `changes` as soon as it is moved, with the path it actually went back to.
+ */
+export async function restoreFromTrash(vol: Volume, tid: string, changes?: EntryChange[]): Promise<Entry> {
   const meta = await readMeta(vol, tid);
   const source = joinPath(itemDir(tid), meta?.name ?? "");
   if (!meta || !(await vol.driver.stat(source))) throw new TheFinderError("NOT_FOUND", "Item is no longer in the trash");
@@ -149,6 +156,7 @@ export async function restoreFromTrash(vol: Volume, tid: string): Promise<Entry>
   const name = await vol.uniqueName(dir, meta.name, meta.kind === "dir");
   const target = joinPath(dir, name);
   await vol.driver.move(source, target);
+  changes?.push({ type: "restored", volume: vol.id, trashId: tid, path: target, kind: meta.kind });
   await purgeOne(vol, tid);
   const stat = await vol.driver.stat(target);
   if (!stat) throw new TheFinderError("STORAGE", "Restored item could not be found");

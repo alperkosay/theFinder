@@ -39,6 +39,7 @@ Same as `new TheFinder(options)`. Throws an `Error` right away on a bad configur
 | `authorize` | `(ctx) => AuthorizeResult \| Promise<…>` | — | Runs before every command. See [Authorization](#authorization). |
 | `onBeforeCommand` | `(ctx) => void \| Promise<void>` | — | After authorization, before the command. If it throws, the command doesn't run. |
 | `onAfterCommand` | `(ctx & { result }) => void \| Promise<void>` | — | After the command succeeds. For file responses `result` is a `Response`. |
+| `onEntriesChanged` | `(changes, ctx) => void \| Promise<void>` | — | After storage changes that move, remove, restore or replace existing entries. See [Keeping references in sync](#keeping-references-in-sync-onentrieschanged). |
 | `maxEditSize` | `number` | 5 MiB | Upper limit for `get` / `put` (text) |
 | `searchLimit` | `number` | 500 | Result limit for `search` |
 | `thumbnails` | `ThumbnailOptions` | — | Server-side thumbnails. See [Thumbnails](#thumbnails). |
@@ -96,6 +97,71 @@ interface CommandContext {
 | `false` | `403 FORBIDDEN` |
 | `{ readOnly: true }` | The request goes through, but every volume is read-only for it. The `init` response carries `readOnly: true`, so the UI hides write actions by itself. |
 | `throw new TheFinderError("UNAUTHORIZED")` | `401`; the UI calls `onUnauthorized` |
+
+### Keeping references in sync: `onEntriesChanged`
+
+Entry ids are made from the path (`<volume>_<base64url(path)>`), so a file gets a new id when it is renamed or moved. An application that refers to files by its own stable id (for example a CMS with a `uuid → path` table) can keep that table up to date with `onEntriesChanged`:
+
+```ts
+type EntryChange =
+  | { type: "moved"; from: { volume: string; path: VolumePath }; to: { volume: string; path: VolumePath }; kind: EntryKind }
+  | { type: "trashed"; volume: string; path: VolumePath; kind: EntryKind; trashId: string }
+  | { type: "restored"; volume: string; trashId: string; path: VolumePath; kind: EntryKind }
+  | { type: "deleted"; volume: string; path: VolumePath; kind: EntryKind } // removed for good, without the trash
+  | { type: "purged"; volume: string; trashId: string } // removed from the trash for good
+  | { type: "replaced"; volume: string; path: VolumePath }; // same file, same path, new content
+
+const finder = createTheFinder({
+  volumes: [/* ... */],
+  async onEntriesChanged(changes, ctx) {
+    for (const c of changes) {
+      // A folder comes as one change: update its own path and every path below `from.path + "/"`.
+      if (c.type === "moved") await db.files.movePath(c.from, c.to);
+      if (c.type === "trashed") await db.files.markTrashed(c.volume, c.path, c.trashId);
+      if (c.type === "restored") await db.files.restore(c.volume, c.trashId, c.path);
+      if (c.type === "deleted") await db.files.removePath(c.volume, c.path);
+      if (c.type === "purged") await db.files.removeTrashed(c.volume, c.trashId);
+      if (c.type === "replaced") await db.files.touch(c.volume, c.path);
+    }
+  },
+});
+```
+
+`EntryChange` and `EntryKind` (`"file" | "dir"`) are exported from `@thefinder/core`.
+
+**When it is called**
+
+- Once per command, with every change of that command in one array, after the storage work is over and before `onAfterCommand`. It is awaited. Commands that change nothing existing do not call it.
+- A folder is a single change for the folder's own path. What is inside it moved, went to the trash or was deleted with it and is not listed.
+- The paths are the real outcome. A paste that had to rename because of a clash reports the new name (`"/docs/a (2).txt"`), and a restore that could not go back to the same name reports the path it went to.
+- `trashId` is the id of the item inside the trash: `Entry.trash.id` in the `trash` listing, which is also the last segment of the trash entry's path (`/.tf-trash/<trashId>`). It is not the entry `id`. The same item has the same `trashId` in `trashed`, `restored` and `purged`.
+- A command with several items that fails half way (a paste of five items whose third one fails) still reports what it did before the failure; the request then fails as usual.
+- `ctx` is the command's context, the same object `onBeforeCommand` gets. Changes made outside a command come with `ctx` set to `null`. Today every change happens inside a command (the retention cleanup of the trash runs inside `trash` and `purge`), but handle `null` so a later version can report outside changes without breaking your code.
+- `execute()` calls it like an HTTP request does. A [read-only](#authorization) request cannot change anything, so it never calls it.
+- Only changes made through theFinder are seen. Files changed directly on the disk or in the bucket are not reported.
+
+**Events**
+
+| Command | Change |
+|---|---|
+| `rename` | `moved` |
+| `paste` with `cut` (also between volumes) | `moved`. Between volumes it is reported once the source is removed. |
+| `paste` with `conflict: "overwrite"` over an existing item | A file over a file: `replaced` for the target (then `moved` with `cut`). Anything else (a folder replaced, or a file replacing a folder): `deleted` for the item that was there, since what was inside it is gone. |
+| `paste` copy without a clash, or with `conflict: "rename"` / `"skip"` | none |
+| `rm` (trash enabled) | `trashed` |
+| `rm` with `permanent: true`, or on a volume with `trash: false` | `deleted` |
+| `restore` | `restored` |
+| `purge` with `ids`, or with `all: true` | `purged` for each item |
+| `trash` / `purge`: items past `retentionDays` are removed when the trash is read | `purged`, in the call of that command |
+| `upload` with `conflict: "overwrite"` over a file | `replaced`, when the last chunk lands |
+| `put` with `id` | `replaced` |
+| `revert` of an existing file | `replaced` (bringing a removed file back creates it: none) |
+| `transform` in place (`output: "overwrite"`, same format) | `replaced` |
+| `transform` writing a copy or another format with `conflict: "overwrite"` over a file | `replaced` for that file; the original is not changed |
+| `transform` writing a new copy or another format, `dryRun` | none |
+| `mkdir`, `mkfile`, `duplicate`, `archive`, `extract` (always into a new folder), `upload` / `put` of a new file | none |
+
+**Errors.** It behaves like `onAfterCommand`: when it throws, the request fails (`500 INTERNAL` unless it throws a `TheFinderError`) and `onAfterCommand` does not run. The storage change has already happened by then, so the client sees an error for something that was done. Catch inside the hook (and queue a retry, for example) when your table being out of date should not fail the user's request. When the command itself failed and the hook throws too, the command's error is returned and the hook's error is logged with `console.error`.
 
 ---
 

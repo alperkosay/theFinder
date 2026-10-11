@@ -12,6 +12,7 @@ import type {
   CommandContext,
   DriverStat,
   Entry,
+  EntryChange,
   ImageFormat,
   ImageProcessor,
   InitResult,
@@ -42,7 +43,8 @@ const MiB = 1024 * 1024;
 
 type Params = Record<string, unknown>;
 type Target = { vol: Volume; path: VolumePath };
-type Command = (engine: TheFinder, p: Params, ctx: CommandContext) => Promise<unknown>;
+/** Commands that change existing entries record each change in `changes` right after it is done. */
+type Command = (engine: TheFinder, p: Params, ctx: CommandContext, changes: EntryChange[]) => Promise<unknown>;
 
 /** Commands that never change anything; they are the only ones accepted over GET. */
 const READ_COMMANDS = new Set([
@@ -201,17 +203,17 @@ export class TheFinder {
       search: (e, p) => e.search(p),
       mkdir: (e, p) => e.mkdir(p),
       mkfile: (e, p) => e.mkfile(p),
-      rename: (e, p) => e.rename(p),
+      rename: (e, p, _, c) => e.rename(p, c),
       duplicate: (e, p) => e.duplicate(p),
-      rm: (e, p) => e.rm(p),
-      trash: (e, p) => e.trashList(p),
-      restore: (e, p) => e.restore(p),
-      purge: (e, p) => e.purge(p),
-      paste: (e, p) => e.paste(p),
-      upload: (e, p) => e.upload(p),
+      rm: (e, p, _, c) => e.rm(p, c),
+      trash: (e, p, _, c) => e.trashList(p, c),
+      restore: (e, p, _, c) => e.restore(p, c),
+      purge: (e, p, _, c) => e.purge(p, c),
+      paste: (e, p, _, c) => e.paste(p, c),
+      upload: (e, p, _, c) => e.upload(p, c),
       abort: (e, p) => e.abort(p),
       get: (e, p) => e.get(p),
-      put: (e, p) => e.put(p),
+      put: (e, p, _, c) => e.put(p, c),
       archive: (e, p) => e.archive(p),
       extract: (e, p) => e.extract(p),
       file: (e, p, ctx) => e.file(p, ctx.request),
@@ -219,11 +221,11 @@ export class TheFinder {
       download: (e, p, ctx) => e.download(p, ctx.request),
       versions: (e, p) => e.versions(p),
       version: (e, p, ctx) => e.version(p, ctx.request),
-      revert: (e, p) => e.revert(p),
+      revert: (e, p, _, c) => e.revert(p, c),
       rmVersions: (e, p) => e.rmVersions(p),
       stats: (e, p) => e.stats(p),
       cleanup: (e, p) => e.cleanup(p),
-      transform: (e, p) => e.transform(p),
+      transform: (e, p, _, c) => e.transform(p, c),
     };
   }
 
@@ -269,9 +271,22 @@ export class TheFinder {
     if (verdict === false) throw new TheFinderError("FORBIDDEN", "Not authorized");
     const engine = typeof verdict === "object" && verdict?.readOnly ? this.readOnly() : this;
     await this.options.onBeforeCommand?.(ctx);
-    const result = await this.commands[ctx.cmd]!(engine, ctx.params, ctx);
+    const changes: EntryChange[] = [];
+    let result: unknown;
+    try {
+      result = await this.commands[ctx.cmd]!(engine, ctx.params, ctx, changes);
+    } catch (e) {
+      // What was done before the failure did happen: report it, then fail with the command's error.
+      await this.reportChanges(changes, ctx).catch((err) => console.error("[thefinder] onEntriesChanged", err));
+      throw e;
+    }
+    await this.reportChanges(changes, ctx);
     await this.options.onAfterCommand?.({ ...ctx, result });
     return result;
+  }
+
+  private async reportChanges(changes: EntryChange[], ctx: CommandContext | null): Promise<void> {
+    if (changes.length && this.options.onEntriesChanged) await this.options.onEntriesChanged(changes, ctx);
   }
 
   /** Same engine and hooks, but every volume is read-only. Created once and reused. */
@@ -453,7 +468,7 @@ export class TheFinder {
     return { entry: await this.entryAt(vol, target) };
   }
 
-  private async rename(p: Params) {
+  private async rename(p: Params, changes: EntryChange[]) {
     const { vol, path } = this.target(p.id);
     vol.assertNotRoot(path);
     vol.assertCan("write", path);
@@ -467,6 +482,7 @@ export class TheFinder {
     if (!caseOnly && (await vol.driver.stat(target))) throw new TheFinderError("EXISTS", `"${name}" already exists`);
     await this.assertTree(vol, path, "write");
     await vol.driver.move(path, target);
+    changes.push({ type: "moved", from: { volume: vol.id, path }, to: { volume: vol.id, path: target }, kind: stat.kind });
     if (stat.kind === "file") await this.thumbs?.forget(vol, path);
     await relocateVersions(vol, path, target, stat.kind);
     return { entry: await this.entryAt(vol, target), removed: [p.id] };
@@ -490,7 +506,7 @@ export class TheFinder {
   }
 
   /** Moves items to the trash (default) or deletes them for good with `permanent: true`. */
-  private async rm(p: Params) {
+  private async rm(p: Params, changes: EntryChange[]) {
     const permanent = bool(p, "permanent");
     const removed: string[] = [];
     const trashed: Entry[] = [];
@@ -501,9 +517,12 @@ export class TheFinder {
       const stat = await vol.stat(path);
       await this.assertTree(vol, path, "delete");
       if (!permanent && vol.trash.enabled) {
-        trashed.push(await moveToTrash(vol, stat));
+        const entry = await moveToTrash(vol, stat);
+        trashed.push(entry);
+        changes.push({ type: "trashed", volume: vol.id, path, kind: stat.kind, trashId: entry.trash!.id });
       } else {
         await vol.driver.remove(path);
+        changes.push({ type: "deleted", volume: vol.id, path, kind: stat.kind });
         await forgetVersions(vol, path, stat.kind);
       }
       if (stat.kind === "file") await this.thumbs?.forget(vol, path);
@@ -521,33 +540,34 @@ export class TheFinder {
     return { vol, tid };
   }
 
-  private async trashList(p: Params) {
+  private async trashList(p: Params, changes: EntryChange[]) {
     const only = str(p, "volume", false);
     const vols = [...this.volumes.values()].filter((v) => v.trash.enabled && (!only || v.id === only));
-    const lists = await Promise.all(vols.map(async (v) => (await listTrash(v)).filter((e) => v.can("read", dirname(e.trash!.originalPath)))));
+    const lists = await Promise.all(vols.map(async (v) => (await listTrash(v, changes)).filter((e) => v.can("read", dirname(e.trash!.originalPath)))));
     return { entries: lists.flat().sort((a, b) => b.mtime - a.mtime) };
   }
 
-  private async restore(p: Params) {
+  private async restore(p: Params, changes: EntryChange[]) {
     const restored: Entry[] = [];
     const removed: string[] = [];
     for (const id of list(p, "ids")) {
       const { vol, tid } = this.trashTarget(id);
-      restored.push(await restoreFromTrash(vol, tid));
+      restored.push(await restoreFromTrash(vol, tid, changes));
       removed.push(id);
     }
     return { restored, removed };
   }
 
   /** Permanently deletes trash items: `{ ids }`, or everything with `{ all: true }` (optionally one `volume`). */
-  private async purge(p: Params) {
+  private async purge(p: Params, changes: EntryChange[]) {
     if (bool(p, "all")) {
       const only = str(p, "volume", false);
       for (const vol of this.volumes.values()) {
         if (!vol.trash.enabled || (only && vol.id !== only)) continue;
         vol.assertCan("delete", "/");
-        const items = await listTrash(vol);
+        const items = await listTrash(vol, changes);
         await emptyTrash(vol);
+        for (const e of items) changes.push({ type: "purged", volume: vol.id, trashId: e.trash!.id });
         for (const e of items) await this.forgetIfGone(vol, e.trash!.originalPath, e.kind);
       }
       return { removed: [], all: true };
@@ -558,6 +578,7 @@ export class TheFinder {
       vol.assertCan("delete", "/");
       const origin = await trashOrigin(vol, tid);
       await purgeOne(vol, tid);
+      changes.push({ type: "purged", volume: vol.id, trashId: tid });
       if (origin) await this.forgetIfGone(vol, origin.path, origin.kind);
       removed.push(id);
     }
@@ -569,7 +590,7 @@ export class TheFinder {
     if (!(await vol.driver.stat(path).catch(() => null))) await forgetVersions(vol, path, kind);
   }
 
-  private async paste(p: Params) {
+  private async paste(p: Params, changes: EntryChange[]) {
     const dst = this.target(p.dst);
     dst.vol.assertCan("write", dst.path);
     await dst.vol.statDir(dst.path);
@@ -604,6 +625,7 @@ export class TheFinder {
       }
 
       let name = stat.name;
+      let displaced: DriverStat | null = null;
       const existing = await dst.vol.driver.stat(joinPath(dst.path, name));
       if (existing) {
         if (sameFolder || conflict === "rename") {
@@ -616,21 +638,29 @@ export class TheFinder {
           // The replaced file stays in the history of its path.
           if (existing.kind === "file" && stat.kind === "file") await snapshot(dst.vol, existing, "replace");
           await dst.vol.driver.remove(existing.path);
+          displaced = existing;
           removed.push(dst.vol.entry(existing).id);
         } else {
           throw new TheFinderError("BAD_REQUEST", `Unknown conflict mode "${conflict}"`);
         }
       }
       const target = joinPath(dst.path, name);
-      dst.vol.assertCreatable(target);
-
-      if (sameVolume) {
-        await (cut ? src.vol.driver.move(src.path, target) : src.vol.driver.copy(src.path, target));
-      } else {
-        await this.copyAcross(src.vol, src.path, stat, dst.vol, target);
-        if (cut) await src.vol.driver.remove(src.path);
+      const dropped = (s: DriverStat): EntryChange => ({ type: "deleted", volume: dst.vol.id, path: s.path, kind: s.kind });
+      try {
+        dst.vol.assertCreatable(target);
+        if (sameVolume) await (cut ? src.vol.driver.move(src.path, target) : src.vol.driver.copy(src.path, target));
+        else await this.copyAcross(src.vol, src.path, stat, dst.vol, target);
+      } catch (e) {
+        if (displaced) changes.push(dropped(displaced));
+        throw e;
+      }
+      // A file over a file keeps its path with new content; a replaced folder is gone with everything in it.
+      if (displaced) {
+        changes.push(displaced.kind === "file" && stat.kind === "file" ? { type: "replaced", volume: dst.vol.id, path: target } : dropped(displaced));
       }
       if (cut) {
+        if (!sameVolume) await src.vol.driver.remove(src.path);
+        changes.push({ type: "moved", from: { volume: src.vol.id, path: src.path }, to: { volume: dst.vol.id, path: target }, kind: stat.kind });
         removed.push(id);
         if (stat.kind === "file") await this.thumbs?.forget(src.vol, src.path);
         if (sameVolume) await relocateVersions(src.vol, src.path, target, stat.kind);
@@ -656,7 +686,7 @@ export class TheFinder {
 
   // --- upload --------------------------------------------------------------------------------
 
-  private async upload(p: Params) {
+  private async upload(p: Params, changes: EntryChange[]) {
     const dst = this.target(p.dst);
     dst.vol.assertCan("write", dst.path);
     const { vol } = dst;
@@ -718,6 +748,9 @@ export class TheFinder {
       vol.assertExtensionAllowed(basename(target));
     }
 
+    // Drivers only put the file in place on the last chunk, so whatever is there now gets replaced.
+    const watched = !!this.options.onEntriesChanged && index === total - 1;
+    const replacing = watched && (await vol.driver.stat(target))?.kind === "file";
     const result = await vol.driver.uploadChunk({
       path: target,
       session: driverSession,
@@ -729,6 +762,7 @@ export class TheFinder {
     });
     const session = base64UrlEncode(encoder.encode(JSON.stringify({ p: target, s: result.session })));
     if (!result.done) return { done: false, session };
+    if (replacing) changes.push({ type: "replaced", volume: vol.id, path: target });
     return { done: true, session, entry: await this.entryAt(vol, target) };
   }
 
@@ -856,7 +890,7 @@ export class TheFinder {
    * Saves content. JSON: { id, content } overwrites a text file.
    * Multipart: { id, file } overwrites, or { dst, name, file } saves a new copy (unique name).
    */
-  private async put(p: Params) {
+  private async put(p: Params, changes: EntryChange[]) {
     const blob = p.file instanceof Blob ? p.file : null;
     if (!blob && typeof p.content !== "string") throw new TheFinderError("BAD_REQUEST", '"content" or "file" is required');
     const data = blob ? new Uint8Array(await blob.arrayBuffer()) : toUint8(p.content as string);
@@ -883,6 +917,7 @@ export class TheFinder {
     if (max != null && data.byteLength > max) throw new TheFinderError("TOO_LARGE", "Content is too large");
     await snapshot(vol, stat, reasonOf(p, "edit"));
     await vol.driver.write(path, data);
+    changes.push({ type: "replaced", volume: vol.id, path });
     if (blob) await this.thumbs?.forget(vol, path);
     return { entry: await this.entryAt(vol, path), created: false };
   }
@@ -1015,7 +1050,7 @@ export class TheFinder {
   }
 
   /** Replaces a file with one of its versions; the replaced content becomes a version too. */
-  private async revert(p: Params) {
+  private async revert(p: Params, changes: EntryChange[]) {
     const { vol, path } = this.target(p.id);
     vol.assertNotRoot(path);
     vol.assertCan("write", path);
@@ -1025,6 +1060,8 @@ export class TheFinder {
       vol.assertExtensionAllowed(basename(path));
     }
     await restoreVersion(vol, path, p.vid);
+    // Bringing back a deleted file creates it: nothing existing changed.
+    if (existing) changes.push({ type: "replaced", volume: vol.id, path });
     await this.thumbs?.forget(vol, path);
     return { entry: await this.entryAt(vol, path), created: !existing };
   }
@@ -1098,7 +1135,7 @@ export class TheFinder {
    * Overwritten files keep their previous content in the version history. Each file reports its own
    * outcome, so one broken image does not fail the batch.
    */
-  private async transform(p: Params) {
+  private async transform(p: Params, changes: EntryChange[]) {
     const images = this.images;
     if (!images) throw new TheFinderError("UNSUPPORTED", "Image processing is not enabled on the server");
     const requested = str(p, "format", false) || "keep";
@@ -1122,7 +1159,7 @@ export class TheFinder {
     const results: TransformResult[] = [];
     for (const id of list(p, "ids")) {
       try {
-        results.push(await this.transformOne(images, id, options));
+        results.push(await this.transformOne(images, id, options, changes));
       } catch (e) {
         const err = mapNativeError(e);
         if (err.code === "INTERNAL") console.error("[thefinder] transform", e);
@@ -1152,6 +1189,7 @@ export class TheFinder {
       suffix: string;
       dryRun: boolean;
     },
+    changes: EntryChange[],
   ): Promise<TransformResult> {
     const { vol, path } = this.target(id);
     vol.assertCan("read", path);
@@ -1179,6 +1217,7 @@ export class TheFinder {
     if (inPlace) {
       await snapshot(vol, stat, "optimize");
       await vol.driver.write(path, out.data);
+      changes.push({ type: "replaced", volume: vol.id, path });
       await this.thumbs?.forget(vol, path);
       return { ...result, entry: await this.entryAt(vol, path), created: false };
     }
@@ -1198,7 +1237,10 @@ export class TheFinder {
     }
     vol.assertCreatable(target);
     await vol.driver.write(target, out.data);
-    if (replaced) await this.thumbs?.forget(vol, target);
+    if (replaced) {
+      changes.push({ type: "replaced", volume: vol.id, path: target });
+      await this.thumbs?.forget(vol, target);
+    }
     return { ...result, entry: await this.entryAt(vol, target), created: !replaced };
   }
 }

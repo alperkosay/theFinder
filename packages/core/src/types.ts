@@ -283,6 +283,30 @@ export interface CommandContext {
   params: Record<string, unknown>;
 }
 
+/** A path inside a given volume. */
+export interface VolumeLocation {
+  volume: string;
+  path: VolumePath;
+}
+
+/**
+ * A storage change that moved, removed, restored or replaced an existing entry. Entry ids are derived
+ * from paths, so these are what a host needs to keep its own references (path → stable id) in sync.
+ * A folder is reported once, for its own path: everything below it changed the same way.
+ * `trashId` is the item's id inside the trash (`Entry.trash.id`), the same in `trashed`, `restored`
+ * and `purged`.
+ */
+export type EntryChange =
+  | { type: "moved"; from: VolumeLocation; to: VolumeLocation; kind: EntryKind }
+  | { type: "trashed"; volume: string; path: VolumePath; kind: EntryKind; trashId: string }
+  | { type: "restored"; volume: string; trashId: string; path: VolumePath; kind: EntryKind }
+  /** Removed for good without going through the trash. */
+  | { type: "deleted"; volume: string; path: VolumePath; kind: EntryKind }
+  /** Removed from the trash for good. */
+  | { type: "purged"; volume: string; trashId: string }
+  /** Same file at the same path, new content. */
+  | { type: "replaced"; volume: string; path: VolumePath };
+
 export interface TheFinderOptions {
   volumes: VolumeOptions[];
   /**
@@ -299,6 +323,15 @@ export interface TheFinderOptions {
   authorize?: (ctx: CommandContext) => AuthorizeResult | Promise<AuthorizeResult>;
   onBeforeCommand?: (ctx: CommandContext) => void | Promise<void>;
   onAfterCommand?: (ctx: CommandContext & { result: unknown }) => void | Promise<void>;
+  /**
+   * Called after storage changes that move, remove, restore or replace existing entries. Lets hosts
+   * keep their own references (e.g. a database of path → stable id) in sync. One call per command,
+   * once its storage work is over and before `onAfterCommand`; never called without changes. A
+   * command that fails half way still reports what it did before failing. `ctx` is null for changes
+   * made outside a command. If it throws, the request fails like with `onAfterCommand`, although
+   * the storage change has already happened.
+   */
+  onEntriesChanged?: (changes: EntryChange[], ctx: CommandContext | null) => void | Promise<void>;
   /** Max size for the text editor `get`/`put` commands. Default: 5 MiB. */
   maxEditSize?: number;
   /** Max number of results returned by `search`. Default: 500. */

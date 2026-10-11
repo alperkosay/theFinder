@@ -39,6 +39,7 @@ const finder = createTheFinder({
 | `authorize` | `(ctx) => AuthorizeResult \| Promise<…>` | — | Her komuttan önce çalışır. Bkz. [Yetkilendirme](#yetkilendirme). |
 | `onBeforeCommand` | `(ctx) => void \| Promise<void>` | — | Yetkilendirmeden sonra, komuttan önce. Hata fırlatırsa komut çalışmaz. |
 | `onAfterCommand` | `(ctx & { result }) => void \| Promise<void>` | — | Komut başarıyla bittikten sonra. Dosya yanıtlarında `result` bir `Response`'tur. |
+| `onEntriesChanged` | `(changes, ctx) => void \| Promise<void>` | — | Var olan öğeleri taşıyan, silen, geri getiren ya da içeriğini değiştiren depolama işlemlerinden sonra. Bkz. [Referansları güncel tutmak](#referansları-güncel-tutmak-onentrieschanged). |
 | `maxEditSize` | `number` | 5 MiB | `get` / `put` (metin) için üst sınır |
 | `searchLimit` | `number` | 500 | `search` sonuç sınırı |
 | `thumbnails` | `ThumbnailOptions` | — | Sunucuda küçük resim. Bkz. [Küçük resimler](#küçük-resimler). |
@@ -96,6 +97,71 @@ interface CommandContext {
 | `false` | `403 FORBIDDEN` |
 | `{ readOnly: true }` | İstek geçer ama bu istek için tüm volume'ler salt okunur olur. `init` yanıtında `readOnly: true` geldiği için arayüz yazma eylemlerini kendiliğinden gizler. |
 | `throw new TheFinderError("UNAUTHORIZED")` | `401`; arayüzde `onUnauthorized` çağrılır |
+
+### Referansları güncel tutmak: `onEntriesChanged`
+
+Öğe kimlikleri yoldan üretilir (`<volume>_<base64url(path)>`), bu yüzden bir dosyanın adı değişince ya da taşınınca kimliği de değişir. Dosyalara kendi sabit kimliğiyle başvuran bir uygulama (örneğin `uuid → path` tablosu tutan bir CMS) bu tabloyu `onEntriesChanged` ile güncel tutabilir:
+
+```ts
+type EntryChange =
+  | { type: "moved"; from: { volume: string; path: VolumePath }; to: { volume: string; path: VolumePath }; kind: EntryKind }
+  | { type: "trashed"; volume: string; path: VolumePath; kind: EntryKind; trashId: string }
+  | { type: "restored"; volume: string; trashId: string; path: VolumePath; kind: EntryKind }
+  | { type: "deleted"; volume: string; path: VolumePath; kind: EntryKind } // çöpe uğramadan kalıcı silindi
+  | { type: "purged"; volume: string; trashId: string } // çöpten kalıcı silindi
+  | { type: "replaced"; volume: string; path: VolumePath }; // aynı dosya, aynı yol, yeni içerik
+
+const finder = createTheFinder({
+  volumes: [/* ... */],
+  async onEntriesChanged(changes, ctx) {
+    for (const c of changes) {
+      // Klasör tek değişiklik olarak gelir: kendi yolunu ve `from.path + "/"` altındaki her yolu güncelleyin.
+      if (c.type === "moved") await db.files.movePath(c.from, c.to);
+      if (c.type === "trashed") await db.files.markTrashed(c.volume, c.path, c.trashId);
+      if (c.type === "restored") await db.files.restore(c.volume, c.trashId, c.path);
+      if (c.type === "deleted") await db.files.removePath(c.volume, c.path);
+      if (c.type === "purged") await db.files.removeTrashed(c.volume, c.trashId);
+      if (c.type === "replaced") await db.files.touch(c.volume, c.path);
+    }
+  },
+});
+```
+
+`EntryChange` ve `EntryKind` (`"file" | "dir"`) `@thefinder/core`'dan dışa aktarılır.
+
+**Ne zaman çağrılır**
+
+- Komut başına bir kez, o komutun bütün değişiklikleri tek dizide; depolama işlemleri bittikten sonra ve `onAfterCommand`'dan önce. `await` edilir. Var olan hiçbir şeyi değiştirmeyen komutlar onu çağırmaz.
+- Klasör, klasörün kendi yolu için tek değişikliktir. İçindekiler onunla birlikte taşınmış, çöpe gitmiş ya da silinmiştir ve tek tek listelenmez.
+- Yollar gerçek sonuçtur. Çakışma yüzünden yeniden adlandıran bir yapıştırma yeni adı (`"/docs/a (2).txt"`), aynı ada dönemeyen bir geri yükleme de gittiği yolu bildirir.
+- `trashId`, öğenin çöp kutusundaki kimliğidir: `trash` listesindeki `Entry.trash.id`, aynı zamanda çöp öğesinin yolunun son parçası (`/.tf-trash/<trashId>`). Öğenin `id`'si değildir. Aynı öğe `trashed`, `restored` ve `purged`'de aynı `trashId` ile gelir.
+- Birden çok öğeli bir komut yarıda hata verirse (üçüncü öğesi hata veren beş öğelik bir yapıştırma) hatadan önce yaptıklarını yine bildirir; istek sonra her zamanki gibi hatayla döner.
+- `ctx` komutun bağlamıdır, `onBeforeCommand`'ın aldığı nesnenin aynısı. Komut dışında yapılan değişikliklerde `ctx` `null` gelir. Bugün her değişiklik bir komut içinde olur (çöpün saklama süresi temizliği `trash` ve `purge` içinde çalışır), ama sonraki bir sürüm komut dışı değişiklikleri kodunuzu bozmadan bildirebilsin diye `null`'ı karşılayın.
+- `execute()` da HTTP isteği gibi çağırır. [Salt okunur](#yetkilendirme) bir istek hiçbir şeyi değiştiremediği için onu hiç çağırmaz.
+- Yalnızca theFinder üzerinden yapılan değişiklikler görülür. Diskte ya da bucket'ta doğrudan değiştirilen dosyalar bildirilmez.
+
+**Olaylar**
+
+| Komut | Değişiklik |
+|---|---|
+| `rename` | `moved` |
+| `cut` ile `paste` (volume'ler arası da) | `moved`. Volume'ler arasında kaynak silindiğinde bildirilir. |
+| Var olan bir öğenin üzerine `conflict: "overwrite"` ile `paste` | Dosya üzerine dosya: hedef için `replaced` (`cut` ise ardından `moved`). Diğer her durumda (klasörün yerine geçme ya da klasörün yerine dosya): orada olan öğe için `deleted`, çünkü içindekiler artık yok. |
+| Çakışmasız ya da `conflict: "rename"` / `"skip"` ile kopyalayan `paste` | yok |
+| `rm` (çöp açık) | `trashed` |
+| `permanent: true` ile ya da `trash: false` olan volume'de `rm` | `deleted` |
+| `restore` | `restored` |
+| `ids` ya da `all: true` ile `purge` | her öğe için `purged` |
+| `trash` / `purge`: çöp okunurken `retentionDays`'i geçen öğeler silinir | o komutun çağrısında `purged` |
+| Bir dosyanın üzerine `conflict: "overwrite"` ile `upload` | son parça yerine yazıldığında `replaced` |
+| `id` ile `put` | `replaced` |
+| Var olan dosyada `revert` | `replaced` (silinmiş bir dosyayı geri getirmek onu oluşturur: yok) |
+| Yerinde `transform` (`output: "overwrite"`, aynı biçim) | `replaced` |
+| Kopya ya da başka biçim yazan `transform`, `conflict: "overwrite"` ile bir dosyanın üzerine | o dosya için `replaced`; orijinal değişmez |
+| Yeni kopya ya da başka biçim yazan `transform`, `dryRun` | yok |
+| `mkdir`, `mkfile`, `duplicate`, `archive`, `extract` (her zaman yeni bir klasöre), yeni dosya üreten `upload` / `put` | yok |
+
+**Hatalar.** `onAfterCommand` gibi davranır: hata fırlatırsa istek hatayla döner (`TheFinderError` fırlatmadıkça `500 INTERNAL`) ve `onAfterCommand` çalışmaz. Depolama işlemi o anda zaten yapılmıştır, yani istemci yapılmış bir iş için hata görür. Tablonuzun geride kalması kullanıcının isteğini düşürmemeliyse hatayı hook içinde yakalayın (ve örneğin yeniden denemeye kuyruklayın). Komutun kendisi hata verdiyse ve hook da fırlatırsa komutun hatası döner, hook'un hatası `console.error` ile yazılır.
 
 ---
 

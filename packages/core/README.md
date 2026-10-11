@@ -90,6 +90,7 @@ Then point the UI at it: [`@thefinder/react`](https://www.npmjs.com/package/@the
 - **Bulk images:** resize / compress / convert with `images: sharpImages()`; converting keeps the original next to the new file.
 - **Storage stats and cleanup** for a dashboard (`stats`, `cleanup`).
 - **`authorize` hook:** `false` → 403, throw `UNAUTHORIZED` → 401, `{ readOnly: true }` → a read-only request.
+- **`onEntriesChanged` hook:** structured `moved` / `trashed` / `restored` / `deleted` / `purged` / `replaced` events, so a database that refers to files by its own id stays in sync when paths change.
 - **Safe by default:** no path traversal, symlinks kept inside the root, CSRF header on writes, zip-slip and zip-bomb guards, HTML/SVG served in a sandbox.
 
 ## S3, R2, MinIO
