@@ -9,7 +9,7 @@
     "url": "git+https://github.com/alperkosay/thefinder.git",
     "directory": "packages/core"
   },
-  "homepage": "https://alperkosay.github.io/thefinder/docs/core.html",
+  "homepage": "https://alperkosay.github.io/theFinder/docs/core.html",
   "bugs": "https://github.com/alperkosay/thefinder/issues",
   "keywords": [
     "file-manager",

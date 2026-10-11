@@ -9,7 +9,7 @@
     "url": "git+https://github.com/alperkosay/thefinder.git",
     "directory": "packages/ckeditor"
   },
-  "homepage": "https://alperkosay.github.io/thefinder/docs/ckeditor.html",
+  "homepage": "https://alperkosay.github.io/theFinder/docs/ckeditor.html",
   "bugs": "https://github.com/alperkosay/thefinder/issues",
   "keywords": [
     "ckeditor",

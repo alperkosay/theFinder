@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://alperkosay.github.io/thefinder/"><img src="https://alperkosay.github.io/thefinder/icon.svg" width="72" height="72" alt="theFinder logo" /></a>
+  <a href="https://alperkosay.github.io/theFinder/"><img src="https://alperkosay.github.io/theFinder/icon.svg" width="72" height="72" alt="theFinder logo" /></a>
 </p>
 
 <h1 align="center">@thefinder/next</h1>
@@ -20,10 +20,10 @@
 </p>
 
 <p align="center">
-  <a href="https://alperkosay.github.io/thefinder/demo/"><b>Live demo</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/"><b>Docs</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/next.html"><b>API reference</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/tr/next.html">Türkçe</a>
+  <a href="https://alperkosay.github.io/theFinder/demo/"><b>Live demo</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/"><b>Docs</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/next.html"><b>API reference</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/tr/next.html">Türkçe</a>
 </p>
 
 ---

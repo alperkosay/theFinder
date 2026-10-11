@@ -9,7 +9,7 @@
     "url": "git+https://github.com/alperkosay/thefinder.git",
     "directory": "packages/next"
   },
-  "homepage": "https://alperkosay.github.io/thefinder/docs/next.html",
+  "homepage": "https://alperkosay.github.io/theFinder/docs/next.html",
   "bugs": "https://github.com/alperkosay/thefinder/issues",
   "keywords": [
     "file-manager",

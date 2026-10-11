@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://alperkosay.github.io/thefinder/"><img src="https://alperkosay.github.io/thefinder/icon.svg" width="72" height="72" alt="theFinder logo" /></a>
+  <a href="https://alperkosay.github.io/theFinder/"><img src="https://alperkosay.github.io/theFinder/icon.svg" width="72" height="72" alt="theFinder logo" /></a>
 </p>
 
 <h1 align="center">@thefinder/react</h1>
@@ -20,14 +20,14 @@
 </p>
 
 <p align="center">
-  <a href="https://alperkosay.github.io/thefinder/demo/"><b>Live demo</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/"><b>Docs</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/react.html"><b>API reference</b></a> ·
-  <a href="https://alperkosay.github.io/thefinder/docs/tr/react.html">Türkçe</a>
+  <a href="https://alperkosay.github.io/theFinder/demo/"><b>Live demo</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/"><b>Docs</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/react.html"><b>API reference</b></a> ·
+  <a href="https://alperkosay.github.io/theFinder/docs/tr/react.html">Türkçe</a>
 </p>
 
 <p align="center">
-  <a href="https://alperkosay.github.io/thefinder/demo/"><img src="https://alperkosay.github.io/thefinder/media/thefinder-hero.png" alt="theFinder file manager in light and dark mode" /></a>
+  <a href="https://alperkosay.github.io/theFinder/demo/"><img src="https://alperkosay.github.io/theFinder/media/thefinder-hero.png" alt="theFinder file manager in light and dark mode" /></a>
 </p>
 
 ---
@@ -95,7 +95,7 @@ All styles live in `@layer thefinder` and use CSS custom properties, so any rule
 }
 ```
 
-The full list of props, events and variables is in the [API reference](https://alperkosay.github.io/thefinder/docs/react.html).
+The full list of props, events and variables is in the [API reference](https://alperkosay.github.io/theFinder/docs/react.html).
 
 ## All theFinder packages
 

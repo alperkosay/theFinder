@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://alperkosay.github.io/thefinder/"><img src="examples/next/app/icon.svg" width="84" height="84" alt="theFinder logo" /></a>
+<a href="https://alperkosay.github.io/theFinder/"><img src="examples/next/app/icon.svg" width="84" height="84" alt="theFinder logo" /></a>
 
 <h1>theFinder</h1>
 
@@ -13,7 +13,7 @@ A fast, keyboard-friendly file manager for React. Plain CSS, a zero-dependency c
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-4c9a6a?style=flat-square&labelColor=33302b" /></a>
   <a href="packages/core/package.json"><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/core%20dependencies-0-4c9a6a?style=flat-square&labelColor=33302b" /></a>
   <img alt="Written in TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white&labelColor=33302b" />
-  <a href="https://alperkosay.github.io/thefinder/demo/"><img alt="Live demo" src="https://img.shields.io/badge/demo-live-d6a03d?style=flat-square&labelColor=33302b" /></a>
+  <a href="https://alperkosay.github.io/theFinder/demo/"><img alt="Live demo" src="https://img.shields.io/badge/demo-live-d6a03d?style=flat-square&labelColor=33302b" /></a>
 </p>
 
 <p>
@@ -27,9 +27,9 @@ A fast, keyboard-friendly file manager for React. Plain CSS, a zero-dependency c
 </p>
 
 <p>
-  <a href="https://alperkosay.github.io/thefinder/demo/"><b>Live demo</b></a>
+  <a href="https://alperkosay.github.io/theFinder/demo/"><b>Live demo</b></a>
   &nbsp;·&nbsp;
-  <a href="https://alperkosay.github.io/thefinder/docs/"><b>Documentation</b></a>
+  <a href="https://alperkosay.github.io/theFinder/docs/"><b>Documentation</b></a>
   &nbsp;·&nbsp;
   <a href="docs/api/README.md"><b>API reference</b></a>
   &nbsp;·&nbsp;
@@ -49,7 +49,7 @@ A file manager for React. The UI is written in plain CSS and depends on no UI li
 | [`@thefinder/react`](packages/react) | [![npm](https://img.shields.io/npm/v/@thefinder/react?style=flat-square&label=&color=d6a03d)](https://www.npmjs.com/package/@thefinder/react) | The `<TheFinder />` component, `useFilePicker` / `openFilePicker` and `styles.css`. Its only dependency is `react` (peer). |
 | [`@thefinder/ckeditor`](packages/ckeditor) | [![npm](https://img.shields.io/npm/v/@thefinder/ckeditor?style=flat-square&label=&color=d6a03d)](https://www.npmjs.com/package/@thefinder/ckeditor) | CKEditor 5 and CKEditor 4 connector (a drop-in for CKFinder). |
 
-For every option, command and type, see the [API reference](docs/api/README.md). Live demo, docs and a comparison with elFinder: [alperkosay.github.io/thefinder](https://alperkosay.github.io/thefinder/).
+For every option, command and type, see the [API reference](docs/api/README.md). Live demo, docs and a comparison with elFinder: [alperkosay.github.io/theFinder](https://alperkosay.github.io/theFinder/).
 
 ![theFinder features](docs/media/thefinder-features.png)
 

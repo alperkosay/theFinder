@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://alperkosay.github.io/thefinder/"><img src="examples/next/app/icon.svg" width="84" height="84" alt="theFinder logo" /></a>
+<a href="https://alperkosay.github.io/theFinder/"><img src="examples/next/app/icon.svg" width="84" height="84" alt="theFinder logo" /></a>
 
 <h1>theFinder</h1>
 
@@ -13,7 +13,7 @@ React için hızlı ve klavye dostu bir dosya yöneticisi. Saf CSS, bağımlıl�
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-4c9a6a?style=flat-square&labelColor=33302b" /></a>
   <a href="packages/core/package.json"><img alt="Çalışma zamanı bağımlılığı yok" src="https://img.shields.io/badge/core%20dependencies-0-4c9a6a?style=flat-square&labelColor=33302b" /></a>
   <img alt="TypeScript ile yazıldı" src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white&labelColor=33302b" />
-  <a href="https://alperkosay.github.io/thefinder/demo/?lang=tr"><img alt="Canlı demo" src="https://img.shields.io/badge/demo-canl%C4%B1-d6a03d?style=flat-square&labelColor=33302b" /></a>
+  <a href="https://alperkosay.github.io/theFinder/demo/?lang=tr"><img alt="Canlı demo" src="https://img.shields.io/badge/demo-canl%C4%B1-d6a03d?style=flat-square&labelColor=33302b" /></a>
 </p>
 
 <p>
@@ -27,9 +27,9 @@ React için hızlı ve klavye dostu bir dosya yöneticisi. Saf CSS, bağımlıl�
 </p>
 
 <p>
-  <a href="https://alperkosay.github.io/thefinder/demo/?lang=tr"><b>Canlı demo</b></a>
+  <a href="https://alperkosay.github.io/theFinder/demo/?lang=tr"><b>Canlı demo</b></a>
   &nbsp;·&nbsp;
-  <a href="https://alperkosay.github.io/thefinder/docs/tr/"><b>Belgeler</b></a>
+  <a href="https://alperkosay.github.io/theFinder/docs/tr/"><b>Belgeler</b></a>
   &nbsp;·&nbsp;
   <a href="docs/api/tr/README.md"><b>API referansı</b></a>
   &nbsp;·&nbsp;
@@ -49,7 +49,7 @@ React için dosya yöneticisi. Arayüz saf CSS ile yazıldı, hiçbir UI kütüp
 | [`@thefinder/react`](packages/react) | [![npm](https://img.shields.io/npm/v/@thefinder/react?style=flat-square&label=&color=d6a03d)](https://www.npmjs.com/package/@thefinder/react) | `<TheFinder />` bileşeni, `useFilePicker` / `openFilePicker` ve `styles.css`. Tek bağımlılığı `react` (peer). |
 | [`@thefinder/ckeditor`](packages/ckeditor) | [![npm](https://img.shields.io/npm/v/@thefinder/ckeditor?style=flat-square&label=&color=d6a03d)](https://www.npmjs.com/package/@thefinder/ckeditor) | CKEditor 5 ve CKEditor 4 connector'ı (CKFinder'ın yerine). |
 
-Tüm seçenekler, komutlar ve tipler için: [API referansı](docs/api/tr/README.md). Canlı demo, belgeler ve elFinder karşılaştırması: [alperkosay.github.io/thefinder](https://alperkosay.github.io/thefinder/tr/).
+Tüm seçenekler, komutlar ve tipler için: [API referansı](docs/api/tr/README.md). Canlı demo, belgeler ve elFinder karşılaştırması: [alperkosay.github.io/theFinder](https://alperkosay.github.io/theFinder/tr/).
 
 ![theFinder özellikleri](docs/media/thefinder-features.tr.png)
 

@@ -9,7 +9,7 @@
     "url": "git+https://github.com/alperkosay/thefinder.git",
     "directory": "packages/react"
   },
-  "homepage": "https://alperkosay.github.io/thefinder/",
+  "homepage": "https://alperkosay.github.io/theFinder/",
   "bugs": "https://github.com/alperkosay/thefinder/issues",
   "keywords": [
     "file-manager",
