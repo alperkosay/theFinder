@@ -1,5 +1,19 @@
 # @thefinder/react
 
+## 0.5.0
+
+### Minor Changes
+
+- f547cb5: Show how much each image would shrink before running "Optimize images". The dialog lists the estimated size and change of every image (e.g. `18 KB → ≈ 5.7 KB −68%`), marks the ones that would be skipped, and sums them up in the footer. Estimates follow the size, format and quality settings and are worked out again a moment after each change.
+  
+  `transform` takes a `dryRun` option: the images are encoded and their sizes reported, but nothing is written.
+
+### Patch Changes
+
+- Updated dependencies [f547cb5]
+- Updated dependencies [9e460d4]
+  - @thefinder/core@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

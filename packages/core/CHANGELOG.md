@@ -1,5 +1,14 @@
 # @thefinder/core
 
+## 0.5.0
+
+### Minor Changes
+
+- f547cb5: Show how much each image would shrink before running "Optimize images". The dialog lists the estimated size and change of every image (e.g. `18 KB → ≈ 5.7 KB −68%`), marks the ones that would be skipped, and sums them up in the footer. Estimates follow the size, format and quality settings and are worked out again a moment after each change.
+  
+  `transform` takes a `dryRun` option: the images are encoded and their sizes reported, but nothing is written.
+- 9e460d4: Add the `onEntriesChanged` option. It is called after storage changes that move, remove, restore or replace existing entries, with structured events (`moved`, `trashed`, `restored`, `deleted`, `purged`, `replaced`), so an application that refers to files by its own id (for example a CMS with a `uuid → path` table) can keep up when a path changes. One call per command, before `onAfterCommand`; a folder is a single event; paths are the real outcome (a clash rename, a restore to another name); a command that fails half way still reports what it did. Items removed by the trash retention period are reported as `purged`. `EntryChange` is exported. Nothing changes when the option is not set.
+
 ## 0.4.0
 
 ### Minor Changes
