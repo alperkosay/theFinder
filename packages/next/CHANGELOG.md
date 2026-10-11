@@ -1,5 +1,13 @@
 # @thefinder/next
 
+## 0.5.1
+
+### Patch Changes
+
+- ba10ec0: Fix the homepage, docs, demo and logo links on npm: GitHub Pages paths are case-sensitive, so they now point to `alperkosay.github.io/theFinder`.
+- Updated dependencies [ba10ec0]
+  - @thefinder/core@0.5.1
+
 ## 0.5.0
 
 ### Patch Changes
