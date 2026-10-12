@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import type { Entry } from "@thefinder/core/client";
 import { getActions } from "./actions";
 import type { Translate } from "./i18n";
+import { viewOf } from "./dom";
 import type { Density, FinderStore, Skin, State, Theme } from "./store";
 
 export interface EditorProps {
@@ -115,7 +116,7 @@ export function useElementSize<T extends HTMLElement>(): [React.RefObject<T | nu
     const update = () =>
       setSize((prev) => (prev.width === el.clientWidth && prev.height === el.clientHeight ? prev : { width: el.clientWidth, height: el.clientHeight }));
     update();
-    const ro = new ResizeObserver(update);
+    const ro = new (viewOf(el).ResizeObserver)(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -139,11 +140,12 @@ export function useDismiss(ref: React.RefObject<HTMLElement | null>, onDismiss: 
         latest.current();
       }
     };
-    document.addEventListener("pointerdown", onPointer, true);
-    document.addEventListener("keydown", onKey, true);
+    const doc = ref.current?.ownerDocument ?? document;
+    doc.addEventListener("pointerdown", onPointer, true);
+    doc.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("pointerdown", onPointer, true);
-      document.removeEventListener("keydown", onKey, true);
+      doc.removeEventListener("pointerdown", onPointer, true);
+      doc.removeEventListener("keydown", onKey, true);
     };
   }, [ref, active, ignore]);
 }

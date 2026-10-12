@@ -1,6 +1,7 @@
 import { ApiError, type TheFinderClient, type ConflictMode, type Entry, type InitResult, type SizeResult, type VolumeInfo } from "@thefinder/core/client";
 import { baseOf, categoryOf, createCollator, extOf, isEditableText } from "./format";
 import type { MessageKey, Translate } from "./i18n";
+import { viewOf } from "./dom";
 
 export type ViewMode = "grid" | "list";
 export type SortKey = "name" | "size" | "mtime" | "kind";
@@ -119,6 +120,8 @@ export interface StoreOptions {
   onPick?: (entries: Entry[]) => void;
   /** Called when the API answers 401 (session expired / not signed in). */
   onUnauthorized?: () => void;
+  /** The mounted file manager; downloads and the clipboard go through its window (it may be a popup). */
+  root?: () => HTMLElement | null;
 }
 
 const PREF_KEYS: (keyof Prefs)[] = ["view", "sortKey", "sortDir", "foldersFirst", "detailsOpen", "sidebarWidth", "theme", "skin", "density"];
@@ -696,11 +699,12 @@ export class FinderStore {
     if (!entries.length) return;
     const href =
       entries.length === 1 && entries[0]!.kind === "file" ? this.client.fileUrl(entries[0]!, true) : this.client.downloadUrl(entries.map((e) => e.id));
-    const a = document.createElement("a");
+    const doc = this.options.root?.()?.ownerDocument ?? document;
+    const a = doc.createElement("a");
     a.href = href;
     a.download = "";
     a.rel = "noopener";
-    document.body.appendChild(a);
+    doc.body.appendChild(a);
     a.click();
     a.remove();
   }
@@ -1057,7 +1061,7 @@ export class FinderStore {
 
   async copyText(text: string) {
     try {
-      await navigator.clipboard.writeText(text);
+      await viewOf(this.options.root?.()).navigator.clipboard.writeText(text);
       this.toast(this.t("copied"));
     } catch {
       this.fail(new Error("clipboard"));

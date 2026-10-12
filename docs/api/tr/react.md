@@ -150,12 +150,34 @@ Sunucu tarafında (`document` yokken) hemen `null` döner.
 |---|---|---|
 | `absoluteUrls` | `false` | `url` alanında tam adres (`https://site/uploads/a.png`) döner |
 | `persistKey` | `"thefinder-picker"` | Seçicinin görünüm tercihleri ana dosya yöneticisinden ayrı saklanır |
+| `popup` | `false` | `true` (ya da `{ width, height, title }`) seçiciyi dialog yerine elFinder gibi ayrı bir tarayıcı penceresinde açar. Bkz. [Ayrı pencere](#ayrı-pencere). |
 
-Seçici `Escape` ile, arka plana tıklayarak ya da "Vazgeç" düğmesiyle kapanır. `Escape` önce açık menü ya da pencereleri kapatır.
+Seçici `Escape` ile, arka plana tıklayarak ya da "Vazgeç" düğmesiyle kapanır. `Escape` önce açık menü ya da pencereleri kapatır. Ayrı pencerede "Vazgeç" düğmesiyle ya da pencerenin kapat düğmesiyle kapanır.
 
 ### `PickedFile`
 
 `Entry` ve ek olarak `url: string`. Volume'de `url` tanımlıysa bu adres (`"/uploads/a.png"`), değilse API'nin dosya adresi kullanılır. `pickedUrl(entry, client, absolute?)` aynı adresi kendi kodunuzda üretmek için dışa aktarılır.
+
+### Ayrı pencere
+
+theFinder, elFinder gibi ayrı bir tarayıcı penceresinde çalışabilir. Bunun için hiçbir şey servis etmeniz gerekmez: pencere, açan sayfanın kendi kodu ve stilleriyle içine çizdiği boş, aynı kökenli bir sayfadır; bu yüzden bütün prop'lar (özel editörler, `headers`, callback'ler) her zamanki gibi çalışır.
+
+```ts
+// Pencerede seçici: aynı promise, aynı sonuç.
+const files = await openFilePicker({ endpoint: "/api/files", accept: "image/*", popup: true });
+const picker = useFilePicker({ endpoint: "/api/files", popup: { width: 960, height: 640 } });
+
+// Dosya yöneticisinin tamamı pencerede.
+const finder = openFinderWindow({ endpoint: "/api/files" }, { title: "Dosyalar" });
+await finder?.closed; // finder.window, finder.close()
+```
+
+`openFinderWindow(props, options?)` `<TheFinder />` prop'larını (`height` hariç) ve `{ width = 1120, height = 720, title = "theFinder" }` alır. `{ window, close, closed }` döndürür; tarayıcı popup'ı engellerse `null`.
+
+- Bir tıklama içinden çağırın, yoksa tarayıcı popup'ı engeller. Seçici o durumda dialog'a geri döner.
+- Pencere sayfanın ortasında açılır ve sayfayla birlikte kapanır: sayfanın koduyla çalışır.
+- Sayfanın stilleri (sonradan eklenenler de) ve `<html>` öznitelikleri (`class="dark"`, `lang`) kopyalanır.
+- CKEditor connector'ında: `picker: { popup: true }`.
 
 ---
 

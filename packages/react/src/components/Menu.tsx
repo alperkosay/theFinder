@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Action } from "../actions";
 import { cx, shortcut, useDismiss, useIsoLayoutEffect } from "../context";
+import { viewOf } from "../dom";
 import { Icon, type IconName } from "../icons";
 
 export type MenuEntry =
@@ -72,7 +73,7 @@ export function Menu({ entries, x, y, onClose, alignRight, label, autoFocus = tr
         // not connected yet; it then stays a plain fixed element
       }
     }
-    const { innerWidth: vw, innerHeight: vh } = window;
+    const { innerWidth: vw, innerHeight: vh } = viewOf(el);
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     let left = alignRight ? x - w : x;

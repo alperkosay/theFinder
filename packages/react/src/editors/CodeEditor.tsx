@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { Entry } from "@thefinder/core/client";
 import { cx, modKey, shortcut, useFinder } from "../context";
+import { viewOf } from "../dom";
 import { FileIcon, Icon, Spinner } from "../icons";
 import { Modal } from "../components/Dialogs";
 import { escapeHtml, LANG_LABEL, langOf, toLines, tokenize, type Lang } from "./highlight";
@@ -49,7 +50,8 @@ function detectIndent(text: string): string {
 function insertText(ta: HTMLTextAreaElement, text: string, start: number, end: number, selectInserted = false) {
   ta.focus();
   ta.setSelectionRange(start, end);
-  const ok = typeof document.execCommand === "function" && document.execCommand("insertText", false, text);
+  const doc = ta.ownerDocument;
+  const ok = typeof doc.execCommand === "function" && doc.execCommand("insertText", false, text);
   if (!ok) {
     ta.setRangeText(text, start, end, "end");
     ta.dispatchEvent(new Event("input", { bubbles: true }));
@@ -107,7 +109,7 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
         setOriginal(text);
         setMeta({ bom, crlf });
         setState({ loading: false });
-        requestAnimationFrame(() => {
+        viewOf(taRef.current).requestAnimationFrame(() => {
           taRef.current?.focus();
           taRef.current?.setSelectionRange(0, 0);
         });
@@ -124,8 +126,9 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
   useEffect(() => {
     if (!dirty) return;
     const handler = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
+    const view = viewOf(taRef.current);
+    view.addEventListener("beforeunload", handler);
+    return () => view.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
   const html = useMemo(() => {
@@ -188,7 +191,7 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
     const ta = taRef.current;
     const selected = ta ? value.slice(ta.selectionStart, ta.selectionEnd) : "";
     setFind((f) => ({ ...f, open: true, replace: replace || f.replace, q: selected && !selected.includes("\n") ? selected : f.q }));
-    requestAnimationFrame(() => findRef.current?.select());
+    viewOf(taRef.current).requestAnimationFrame(() => findRef.current?.select());
   };
 
   const replaceOne = () => {
@@ -273,7 +276,7 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
     if (mod && e.key.toLowerCase() === "g") {
       e.preventDefault();
       setGotoOpen(true);
-      requestAnimationFrame(() => gotoRef.current?.focus());
+      viewOf(taRef.current).requestAnimationFrame(() => gotoRef.current?.focus());
       return;
     }
     if (mod && e.key === "/") {
@@ -568,7 +571,7 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
                     onKeyUp={updateCursor}
                     onClick={updateCursor}
                     onSelect={updateCursor}
-                    onInput={() => requestAnimationFrame(() => taRef.current && revealOffset(taRef.current.selectionStart))}
+                    onInput={() => viewOf(taRef.current).requestAnimationFrame(() => taRef.current && revealOffset(taRef.current.selectionStart))}
                   />
                 </div>
               </div>
@@ -613,7 +616,7 @@ export function CodeEditor({ entry, onClose }: { entry: Entry; onClose: () => vo
             <button
               type="button"
               className="tf-status-btn"
-              onClick={() => (setGotoOpen(true), requestAnimationFrame(() => gotoRef.current?.focus()))}
+              onClick={() => (setGotoOpen(true), viewOf(taRef.current).requestAnimationFrame(() => gotoRef.current?.focus()))}
               title={`${t("goToLine")} (${shortcut("Ctrl+G")})`}
             >
               {t("line", { line: cursor.line, col: cursor.col })}

@@ -286,6 +286,7 @@ export function TheFinder(props: TheFinderProps) {
       onChange: (event) => latest.current.onChange?.(event),
       onPick: (entries) => latest.current.onSelect?.(entries),
       onUnauthorized: () => latest.current.onUnauthorized?.(),
+      root: () => rootRef.current,
     });
   });
   store.options.t = t;

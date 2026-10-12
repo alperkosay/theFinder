@@ -150,12 +150,34 @@ All `<TheFinder />` props (except `onSelect`, `onCancel`, `height`, `style`), pl
 |---|---|---|
 | `absoluteUrls` | `false` | The `url` field contains a full URL (`https://site/uploads/a.png`) |
 | `persistKey` | `"thefinder-picker"` | The picker's view preferences are stored separately from the main file manager |
+| `popup` | `false` | `true` (or `{ width, height, title }`) opens the picker in its own browser window instead of a dialog, like elFinder. See [Own window](#own-window). |
 
-The picker closes with `Escape`, a click on the backdrop or the "Cancel" button. `Escape` first closes any open menu or dialog.
+The picker closes with `Escape`, a click on the backdrop or the "Cancel" button. `Escape` first closes any open menu or dialog. In a popup window it closes with the "Cancel" button or the window's close button.
 
 ### `PickedFile`
 
 `Entry` plus `url: string`. If the volume has a `url`, that address is used (`"/uploads/a.png"`); otherwise the API's file URL. `pickedUrl(entry, client, absolute?)` is exported to build the same URL in your own code.
+
+### Own window
+
+Like elFinder, theFinder can run in a separate browser window. Nothing has to be served for it: the window is an empty same-origin page that the opening page renders into with its own code and stylesheets, so every prop (custom editors, `headers`, callbacks) works as usual.
+
+```ts
+// The picker in a window: same promise, same result.
+const files = await openFilePicker({ endpoint: "/api/files", accept: "image/*", popup: true });
+const picker = useFilePicker({ endpoint: "/api/files", popup: { width: 960, height: 640 } });
+
+// The whole file manager in a window.
+const finder = openFinderWindow({ endpoint: "/api/files" }, { title: "Files" });
+await finder?.closed; // finder.window, finder.close()
+```
+
+`openFinderWindow(props, options?)` takes `<TheFinder />` props (except `height`) and `{ width = 1120, height = 720, title = "theFinder" }`. It returns `{ window, close, closed }`, or `null` when the browser blocks the popup.
+
+- Call it from a click handler, or the browser blocks the popup. The picker then falls back to the dialog.
+- The window is centered over the page and closes with it: it runs on the page's code.
+- Stylesheets of the page (and ones added later) are copied in, as are the attributes of `<html>` (`class="dark"`, `lang`).
+- With the CKEditor connector: `picker: { popup: true }`.
 
 ---
 

@@ -354,6 +354,7 @@ const picker = useFilePicker({ endpoint: "/api/files", accept: "image/*" });
 - `accept`: `<input type="file">` ile aynı söz dizimi (`"image/*"`, `".pdf,.docx"`) ya da `(entry) => boolean`. Uymayan dosyalar soluk görünür, seçilemez.
 - `multiple`, `selectLabel`, `locale`, `theme` ve diğer `<TheFinder />` prop'ları geçerlidir. `absoluteUrls: true` tam adres döndürür.
 - React dışında (vanilla JS, Vue…) aynı şey: `const files = await openFilePicker({ endpoint: "/api/files" })`.
+- `popup: true` seçiciyi elFinder gibi ayrı bir tarayıcı penceresinde açar; `openFinderWindow({ endpoint })` aynısını dosya yöneticisinin tamamı için yapar. Ayrıca bir sayfa servis etmek gerekmez.
 - Çalışan örnek: `examples/next` içindeki `/playground` sayfası.
 
 ## CKEditor

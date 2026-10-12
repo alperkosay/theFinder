@@ -1,5 +1,6 @@
 export { TheFinder, type TheFinderProps } from "./TheFinder";
 export { openFilePicker, useFilePicker, pickedUrl, type FilePickerOptions, type PickedFile } from "./picker";
+export { openFinderWindow, type FinderWindow, type FinderWindowOptions } from "./popup";
 export { matchesAccept, type Accept } from "./format";
 export { useFinder, useStore, type CustomEditor, type EditorProps } from "./context";
 export { FinderStore, type State as FinderState, type Prefs as FinderPrefs, type Theme, type Skin, type Density } from "./store";

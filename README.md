@@ -354,6 +354,7 @@ const picker = useFilePicker({ endpoint: "/api/files", accept: "image/*" });
 - `accept`: the same syntax as `<input type="file">` (`"image/*"`, `".pdf,.docx"`) or `(entry) => boolean`. Files that don't match are dimmed and cannot be selected.
 - `multiple`, `selectLabel`, `locale`, `theme` and the other `<TheFinder />` props apply. `absoluteUrls: true` returns full URLs.
 - Outside React (vanilla JS, Vue…) it's the same: `const files = await openFilePicker({ endpoint: "/api/files" })`.
+- `popup: true` opens the picker in its own browser window, like elFinder; `openFinderWindow({ endpoint })` does the same for the whole file manager. No extra page to serve.
 - Working example: the `/playground` page in `examples/next`.
 
 ## CKEditor

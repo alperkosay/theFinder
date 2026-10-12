@@ -17,6 +17,7 @@ export function FileField({
   accept,
   placeholder,
   hint,
+  popup,
 }: {
   label: string;
   name: string;
@@ -25,9 +26,11 @@ export function FileField({
   accept?: Accept;
   placeholder?: string;
   hint?: string;
+  /** Open the picker in its own browser window instead of a dialog. */
+  popup?: boolean;
 }) {
   const id = useId();
-  const picker = useFilePicker({ endpoint: "/api/files", locale: "tr", accept });
+  const picker = useFilePicker({ endpoint: "/api/files", locale: "tr", accept, popup });
 
   const choose = async () => {
     const files = await picker.open();

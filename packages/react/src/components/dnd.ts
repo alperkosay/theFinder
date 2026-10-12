@@ -28,13 +28,14 @@ export function startDrag(e: DragEvent, ids: string[], label: string, root: HTML
   e.dataTransfer.setData("text/plain", label);
   e.dataTransfer.effectAllowed = "copyMove";
   if (!root) return;
-  const ghost = document.createElement("div");
+  const doc = root.ownerDocument;
+  const ghost = doc.createElement("div");
   ghost.className = "tf-drag-ghost";
-  const name = document.createElement("span");
+  const name = doc.createElement("span");
   name.textContent = label;
   ghost.appendChild(name);
   if (ids.length > 1) {
-    const badge = document.createElement("b");
+    const badge = doc.createElement("b");
     badge.textContent = String(ids.length);
     ghost.appendChild(badge);
   }

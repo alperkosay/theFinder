@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { openFinderWindow } from "@thefinder/react";
 import { Nav } from "../nav";
 import { FileField, GalleryField } from "./file-field";
 import { RichEditor } from "./rich-editor";
@@ -107,11 +108,15 @@ export function Playground() {
               name="file"
               value={post.file}
               placeholder="/uploads/…"
-              hint="accept verilmedi: her türden dosya seçilebilir."
+              hint="accept verilmedi, popup: true — seçici ayrı bir tarayıcı penceresinde açılır."
+              popup
               onChange={(v) => set("file", v)}
             />
             <GalleryField label="Galeri" value={post.gallery} onChange={(v) => set("gallery", v)} />
             <div className="form-actions">
+              <button type="button" className="btn" onClick={() => openFinderWindow({ endpoint: "/api/files", locale: "tr" })}>
+                Dosya yöneticisini yeni pencerede aç
+              </button>
               <button type="submit" className="btn primary">
                 Gönder
               </button>

@@ -1734,8 +1734,20 @@
   /* ------------------------------------------------------------------------------------------
    * Dialogs
    * ---------------------------------------------------------------------------------------- */
+  /*
+   * Centered by hand: the browser's own `margin: auto` for modal dialogs is lost under CSS resets
+   * that zero every margin (Tailwind v4 preflight, shadcn/ui), which pins dialogs to the top left.
+   */
+  .tf-dialog,
+  .tf-picker {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+  }
+
   .tf-dialog {
     width: min(440px, calc(100vw - 32px));
+    height: fit-content;
     max-width: none;
     max-height: calc(100vh - 32px);
     padding: 0;
@@ -1760,6 +1772,25 @@
   .tf-dialog.is-wide {
     width: min(1240px, calc(100vw - 32px));
     height: min(880px, calc(100vh - 32px));
+  }
+
+  /* Window-like dialogs move by their title bar, like the picker. */
+  .tf-dialog .tf-editor-head,
+  .tf-dialog .tf-ql-head {
+    cursor: grab;
+  }
+
+  .tf-dialog.is-moving,
+  .tf-dialog.is-moving * {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  @media (max-width: 640px) {
+    .tf-dialog .tf-editor-head,
+    .tf-dialog .tf-ql-head {
+      cursor: inherit;
+    }
   }
 
   .tf-dialog-body {
@@ -2818,6 +2849,18 @@
     .tf-picker .tf-header {
       cursor: inherit;
     }
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Own browser window (`openFinderWindow`, `openFilePicker({ popup: true })`)
+   * ---------------------------------------------------------------------------------------- */
+  .tf-window {
+    height: 100%;
+  }
+
+  .tf-window > .tf-root {
+    border: 0;
+    border-radius: 0;
   }
 
   /* ------------------------------------------------------------------------------------------

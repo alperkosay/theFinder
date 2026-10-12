@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { Entry } from "@thefinder/core/client";
 import { cx, modKey, useElementSize, useFinder, useIsoLayoutEffect, useStore, useVisible } from "../context";
+import { viewOf } from "../dom";
 import { baseOf, categoryOf, formatDate, formatSize, kindLabel, locationOf } from "../format";
 import { FileIcon, FolderIcon, Icon, Spinner } from "../icons";
 import { TRASH_ID } from "../store";
@@ -508,6 +509,7 @@ export function FileView({ density }: { density: Density }) {
     let pointer = { x: e.clientX, y: e.clientY };
     let moved = false;
     let raf = 0;
+    const view = viewOf(el);
 
     const update = () => {
       const r = el.getBoundingClientRect();
@@ -543,21 +545,21 @@ export function FileView({ density }: { density: Density }) {
       if (pointer.y < r.top + edge) el.scrollTop -= Math.ceil((r.top + edge - pointer.y) / 3);
       else if (pointer.y > r.bottom - edge) el.scrollTop += Math.ceil((pointer.y - (r.bottom - edge)) / 3);
       update();
-      raf = requestAnimationFrame(tick);
+      raf = view.requestAnimationFrame(tick);
     };
 
     const move = (ev: PointerEvent) => {
       pointer = { x: ev.clientX, y: ev.clientY };
-      if (!raf) raf = requestAnimationFrame(tick);
+      if (!raf) raf = view.requestAnimationFrame(tick);
     };
     const up = () => {
-      cancelAnimationFrame(raf);
+      view.cancelAnimationFrame(raf);
       setLasso(null);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      view.removeEventListener("pointermove", move);
+      view.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    view.addEventListener("pointermove", move);
+    view.addEventListener("pointerup", up);
   };
 
   // --- external file drops -----------------------------------------------------------------------

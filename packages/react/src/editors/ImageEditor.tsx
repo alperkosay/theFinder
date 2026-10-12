@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Entry } from "@thefinder/core/client";
 import { cx, useFinder } from "../context";
+import { viewOf } from "../dom";
 import { baseOf, extOf, formatSize } from "../format";
 import { FileIcon, Icon, Spinner } from "../icons";
 import { Modal } from "../components/Dialogs";
@@ -176,12 +177,13 @@ export function ImageEditor({ entry, onClose }: { entry: Entry; onClose: () => v
         setSize(null);
       }
     };
+    const view = viewOf(canvas);
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      view.removeEventListener("pointermove", move);
+      view.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    view.addEventListener("pointermove", move);
+    view.addEventListener("pointerup", up);
   };
 
   // --- export ------------------------------------------------------------------------------------

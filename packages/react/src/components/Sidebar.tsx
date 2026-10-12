@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Entry } from "@thefinder/core/client";
 import { cx, useFinder, useStore } from "../context";
+import { viewOf } from "../dom";
 import { FolderIcon, Icon, Spinner } from "../icons";
 import { TRASH_ID, type FinderStore } from "../store";
 import { useTouch } from "../touch";
@@ -171,7 +172,7 @@ export function Sidebar() {
 
   const focusRow = (id: string) => {
     setFocusId(id);
-    requestAnimationFrame(() => treeRef.current?.querySelector<HTMLElement>(`[data-tree-id="${CSS.escape(id)}"]`)?.focus());
+    viewOf(treeRef.current).requestAnimationFrame(() => treeRef.current?.querySelector<HTMLElement>(`[data-tree-id="${CSS.escape(id)}"]`)?.focus());
   };
 
   const onKeyDown = (e: KeyboardEvent) => {

@@ -2,6 +2,10 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { cx, useFinder, useStore } from "../context";
 import { baseOf } from "../format";
 import { Icon } from "../icons";
+import { useMovable } from "../movable";
+
+/** Title bars of the window-like dialogs (storage, editors, preview…); short alerts have none and stay put. */
+const TITLE_BAR = ".tf-editor-head, .tf-ql-head";
 
 /** Native <dialog> (focus trap, top layer, Esc) with theFinder styling. */
 export function Modal({
@@ -20,6 +24,7 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   const cancel = useRef(onCancel);
   cancel.current = onCancel;
+  const movable = useMovable(ref, TITLE_BAR);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -40,6 +45,8 @@ export function Modal({
       className={cx("tf-dialog", wide && "is-wide", className)}
       aria-label={label}
       onKeyDown={(e) => e.stopPropagation()}
+      onPointerDown={movable.onPointerDown}
+      onDoubleClick={movable.onDoubleClick}
       onMouseDown={(e) => {
         // Click on the backdrop (the dialog element itself, outside its content box) cancels.
         if (e.target === ref.current) {
