@@ -1,5 +1,14 @@
 # @thefinder/ckeditor
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [3d5005e]
+- Updated dependencies [3d5005e]
+  - @thefinder/react@0.6.0
+  - @thefinder/core@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes

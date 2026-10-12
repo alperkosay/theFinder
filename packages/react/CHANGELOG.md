@@ -1,5 +1,16 @@
 # @thefinder/react
 
+## 0.6.0
+
+### Minor Changes
+
+- 3d5005e: theFinder can run in its own browser window, like elFinder: `openFilePicker({ popup: true })` (or `useFilePicker`, or the CKEditor connector's `picker` option) opens the picker in a popup and resolves the same way, and `openFinderWindow(props)` opens the whole file manager. The window renders from the opening page with its stylesheets, so there is no extra page to serve. If the browser blocks the popup, the picker falls back to the dialog.
+
+### Patch Changes
+
+- 3d5005e: Dialogs stay centered under CSS resets that zero every margin (Tailwind v4 preflight, shadcn/ui) instead of sticking to the top left corner. Window-like dialogs (storage, version history, image optimization, Quick Look, code and image editors) can now be moved by their title bar, like the file picker; double click the title bar to center again. Confirmation and prompt dialogs stay put.
+- @thefinder/core@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes

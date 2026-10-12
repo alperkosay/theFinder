@@ -1,5 +1,11 @@
 # @thefinder/next
 
+## 0.6.0
+
+### Patch Changes
+
+- @thefinder/core@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes
