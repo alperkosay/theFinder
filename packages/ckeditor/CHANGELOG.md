@@ -1,5 +1,13 @@
 # @thefinder/ckeditor
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [01cccc6]
+  - @thefinder/react@0.7.0
+  - @thefinder/core@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes

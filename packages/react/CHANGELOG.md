@@ -1,5 +1,15 @@
 # @thefinder/react
 
+## 0.7.0
+
+### Minor Changes
+
+- 01cccc6: Freshly uploaded files (and the top-level folders of folder uploads) now come up selected, as long as you haven't picked something else while they were uploading.
+
+### Patch Changes
+
+- @thefinder/core@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes
