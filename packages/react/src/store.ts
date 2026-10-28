@@ -14,6 +14,8 @@ export interface UploadItem {
   name: string;
   relativePath?: string;
   dst: string;
+  /** Files dropped or picked together share a batch; the latest batch ends up selected. */
+  batch: number;
   size: number;
   loaded: number;
   status: "queued" | "uploading" | "done" | "error" | "cancelled";
@@ -157,6 +159,8 @@ export class FinderStore {
   private collator: Intl.Collator;
   /** Folder sizes worked out so far, by the ids asked for. Any change to the files drops them. */
   private sizes = new Map<string, SizeResult>();
+  /** The latest upload batch and what of it has been selected so far. */
+  private uploadPick: { batch: number; dst: string; ids: string[] } | null = null;
 
   constructor(readonly options: StoreOptions) {
     this.collator = createCollator(options.locale);
@@ -1120,11 +1124,14 @@ export class FinderStore {
 
   upload(files: { file: File; relativePath?: string }[], dstId = this.state.cwd) {
     if (!dstId || !files.length) return;
+    const batch = nextId();
+    this.uploadPick = { batch, dst: dstId, ids: [] };
     const items: UploadItem[] = files.map(({ file, relativePath }) => ({
       id: nextId(),
       name: file.name,
       relativePath: relativePath || undefined,
       dst: dstId,
+      batch,
       size: file.size,
       loaded: 0,
       status: "queued",
@@ -1161,7 +1168,10 @@ export class FinderStore {
         },
       });
       this.patchUpload(item.id, { status: "done", loaded: item.size, controller: undefined });
-      if (!item.relativePath) this.addLocal([entry]);
+      if (!item.relativePath) {
+        this.addLocal([entry]);
+        this.pickUploaded(item.batch, [entry.id]);
+      }
       this.changed({ type: "upload", entries: [entry] });
     } catch (e) {
       const cancelled = e instanceof ApiError && e.code === "ABORTED";
@@ -1171,8 +1181,36 @@ export class FinderStore {
     const busy = this.state.uploads.some((u) => u.status === "queued" || u.status === "uploading");
     if (!busy) {
       // Folder uploads create intermediate folders: refresh what's on screen once everything landed.
-      void this.revalidate([this.state.cwd, ...new Set(this.state.uploads.map((u) => u.dst))]);
+      await this.revalidate([this.state.cwd, ...new Set(this.state.uploads.map((u) => u.dst))]);
+      this.pickUploadedFolders();
     }
+  }
+
+  /** Adds freshly uploaded entries to the selection, unless the user has picked something else meanwhile. */
+  private pickUploaded(batch: number, ids: string[]) {
+    const pick = this.uploadPick;
+    if (!pick || pick.batch !== batch || this.state.cwd !== pick.dst) return;
+    const sel = this.state.selection;
+    if (pick.ids.length && (sel.length !== pick.ids.length || sel.some((id, i) => id !== pick.ids[i]))) {
+      this.uploadPick = null;
+      return;
+    }
+    const add = ids.filter((id) => !pick.ids.includes(id));
+    if (!add.length) return;
+    pick.ids = [...pick.ids, ...add];
+    this.set({ selection: pick.ids, anchor: pick.ids[0] ?? null, focus: add[add.length - 1] ?? null });
+  }
+
+  /** Folder uploads only exist as folders after the listing refresh: select their top-level folders. */
+  private pickUploadedFolders() {
+    const pick = this.uploadPick;
+    if (!pick) return;
+    const names = new Set(
+      this.state.uploads.filter((u) => u.batch === pick.batch && u.status === "done" && u.relativePath).map((u) => u.relativePath!.split("/").find(Boolean)),
+    );
+    if (!names.size) return;
+    const ids = (this.state.listings[pick.dst] ?? []).filter((id) => names.has(this.state.entries[id]?.name));
+    this.pickUploaded(pick.batch, ids);
   }
 
   cancelUpload(id: number) {
