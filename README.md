@@ -402,6 +402,7 @@ CKEDITOR.replace("body", {
 | `skin` | `"classic"` (default), `"macos"` (Finder-like look) |
 | `density` | `"comfortable"` (default), `"compact"` |
 | `settings` | Settings menu in the header (theme, view, density). The user's choice is stored under `persistKey`. Default `true` |
+| `dashboard` | Storage dashboard button in the header and the "More" menu. Default `true` |
 | `height`, `className`, `style` | Size and style. Default height is 100% of the parent |
 | `initialFolder`, `defaultView`, `persistKey` | Start folder, default view and sorting, localStorage key for preferences |
 | `rememberFolder` | Reopen the folder the user was last in (default: true) |

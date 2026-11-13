@@ -11,9 +11,9 @@ const OLDER_THAN = [7, 30, 90, 365];
 const KEEP_LAST = [1, 3, 5, 10];
 
 export function Dashboard() {
-  const { store } = useFinder();
+  const { store, dashboard } = useFinder();
   const open = useStore((s) => s.dashboard);
-  if (!open) return null;
+  if (!open || !dashboard) return null;
   return <DashboardView onClose={() => store.set({ dashboard: false })} />;
 }
 

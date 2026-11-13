@@ -38,6 +38,7 @@ import "@thefinder/react/styles.css";
 | `skin` | `"classic" \| "macos"` | `"classic"` | `macos`: Finder benzeri görünüm (mavi klasörler, trafik ışıkları, zebra satırlar, buzlu menüler). Açık ve koyu modda çalışır. |
 | `density` | `"comfortable" \| "compact"` | `"comfortable"` | |
 | `settings` | `boolean` | `true` | Başlıkta tema, görünüm ve yoğunluk seçilen ayarlar menüsü. Kullanıcının seçimi `persistKey` altında saklanır ve prop'ları ezer; prop sonradan değişirse prop geçerli olur. |
+| `dashboard` | `boolean` | `true` | Depolama panosu: başlıktaki düğmesi ve "Diğer" menüsündeki girişi. `false` ikisini de gizler. |
 | `height` | `number \| string` | `"100%"` | |
 | `className`, `style` | | — | Kök öğeye (`.tf-root`) eklenir |
 | `thumbnails` | `boolean` | `true` | Görsellerde küçük resim gösterir |
