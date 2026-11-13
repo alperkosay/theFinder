@@ -464,6 +464,9 @@ export class S3Driver implements StorageDriver {
     const filename = options.filename ?? path.slice(path.lastIndexOf("/") + 1);
     const url = this.url(this.key(path), {
       "response-content-disposition": contentDisposition(options.download ? "attachment" : "inline", filename),
+      // The stored Content-Type is the one of the name at upload time and survives renames
+      // ("x.html" renamed "x.txt"): pin the type of the current name instead.
+      "response-content-type": mimeOf(filename),
     });
     return presignUrl({ url, region: this.region, credentials: this.credentials, expiresIn: options.expiresIn ?? this.expiresIn });
   }
