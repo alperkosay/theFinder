@@ -1,5 +1,16 @@
 # @thefinder/react
 
+## 0.8.0
+
+### Minor Changes
+
+- b122a37: New `dashboard` prop: `dashboard={false}` hides the storage dashboard button in the header and its entry in the "More" menu.
+
+### Patch Changes
+
+- Updated dependencies [a09529f]
+  - @thefinder/core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes

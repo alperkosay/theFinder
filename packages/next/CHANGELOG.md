@@ -1,5 +1,12 @@
 # @thefinder/next
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [a09529f]
+  - @thefinder/core@0.8.0
+
 ## 0.7.0
 
 ### Patch Changes
