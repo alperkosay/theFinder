@@ -15,7 +15,7 @@ function ToolButton({ action, label }: { action: Action; label?: boolean }) {
 }
 
 export function Toolbar() {
-  const { store, t } = useFinder();
+  const { store, t, dashboard } = useFinder();
   const actions = useActions();
   const view = useStore((s) => s.view);
   const sortKey = useStore((s) => s.sortKey);
@@ -53,7 +53,7 @@ export function Toolbar() {
     item(actions.copyLink),
     sep,
     item(actions.selectAll),
-    item(actions.dashboard),
+    ...(dashboard ? [item(actions.dashboard)] : []),
     sep,
     item(actions.deletePermanently),
   ];

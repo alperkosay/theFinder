@@ -183,7 +183,7 @@ function SettingsButton() {
 }
 
 export function Header() {
-  const { store, t, settings } = useFinder();
+  const { store, t, settings, dashboard } = useFinder();
   const canBack = useStore((s) => s.historyIndex > 0);
   const canForward = useStore((s) => s.historyIndex < s.history.length - 1);
   const canUp = useStore((s) => !!(s.cwd && s.entries[s.cwd]?.parent));
@@ -217,16 +217,18 @@ export function Header() {
         <Icon name="refresh" />
       </button>
       <SearchBox />
-      <button
-        type="button"
-        className="tf-btn is-icon tf-storage-btn"
-        aria-label={t("storage")}
-        title={t("storage")}
-        aria-haspopup="dialog"
-        onClick={() => store.set({ dashboard: true })}
-      >
-        <Icon name="gauge" />
-      </button>
+      {dashboard && (
+        <button
+          type="button"
+          className="tf-btn is-icon tf-storage-btn"
+          aria-label={t("storage")}
+          title={t("storage")}
+          aria-haspopup="dialog"
+          onClick={() => store.set({ dashboard: true })}
+        >
+          <Icon name="gauge" />
+        </button>
+      )}
       {settings && <SettingsButton />}
     </div>
   );

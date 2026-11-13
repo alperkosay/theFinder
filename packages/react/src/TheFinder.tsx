@@ -48,6 +48,8 @@ export interface TheFinderProps {
    * remembered under `persistKey` and wins over the props until a prop changes. Default: true.
    */
   settings?: boolean;
+  /** Show the storage dashboard (button in the header and entry in the "More" menu). Default: true. */
+  dashboard?: boolean;
   /** Height of the file manager. Default: 100% of the parent. */
   height?: number | string;
   className?: string;
@@ -332,6 +334,7 @@ export function TheFinder(props: TheFinderProps) {
       rootRef,
       appearance,
       settings: props.settings ?? true,
+      dashboard: props.dashboard ?? true,
     }),
     [
       store,
@@ -346,6 +349,7 @@ export function TheFinder(props: TheFinderProps) {
       cancellable,
       appearance,
       props.settings,
+      props.dashboard,
     ],
   );
 

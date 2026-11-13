@@ -402,6 +402,7 @@ CKEDITOR.replace("body", {
 | `skin` | `"classic"` (varsayılan), `"macos"` (Finder benzeri görünüm) |
 | `density` | `"comfortable"` (varsayılan), `"compact"` |
 | `settings` | Başlıktaki ayarlar menüsü (tema, görünüm, yoğunluk). Kullanıcının seçimi `persistKey` altında saklanır. Varsayılan `true` |
+| `dashboard` | Başlıktaki ve "Diğer" menüsündeki depolama panosu düğmesi. Varsayılan `true` |
 | `height`, `className`, `style` | Boyut ve stil. Varsayılan yükseklik ebeveynin %100'ü |
 | `initialFolder`, `defaultView`, `persistKey` | Başlangıç klasörü, varsayılan görünüm ve sıralama, tercihlerin saklanacağı localStorage anahtarı |
 | `rememberFolder` | Kullanıcının en son açtığı klasörü tekrar açar (varsayılan: true) |

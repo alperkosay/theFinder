@@ -40,6 +40,8 @@ export interface FinderContextValue {
   appearance: { theme: Theme; skin: Skin; density: Density };
   /** Show the settings menu in the header. */
   settings: boolean;
+  /** Show the storage dashboard and the controls that open it. */
+  dashboard: boolean;
 }
 
 /** The appearance in effect: the user's choice from the settings menu, else the props. */

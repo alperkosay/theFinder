@@ -38,6 +38,7 @@ Import `styles.css` once, anywhere in your app. The component fills the height o
 | `skin` | `"classic" \| "macos"` | `"classic"` | `macos`: a Finder-like look (blue folders, traffic lights, zebra rows, frosted menus). Works in light and dark mode. |
 | `density` | `"comfortable" \| "compact"` | `"comfortable"` | |
 | `settings` | `boolean` | `true` | A settings menu in the header for theme, view and density. The user's choice is stored under `persistKey` and wins over the props; if a prop changes later, the prop applies. |
+| `dashboard` | `boolean` | `true` | The storage dashboard: its button in the header and its entry in the "More" menu. `false` hides both. |
 | `height` | `number \| string` | `"100%"` | |
 | `className`, `style` | | — | Added to the root element (`.tf-root`) |
 | `thumbnails` | `boolean` | `true` | Shows thumbnails for images |
