@@ -47,7 +47,7 @@ Same as `new TheFinder(options)`. Throws an `Error` right away on a bad configur
 | `maxImageSize` | `number` | 60 MiB | Largest input for `transform` |
 | `maxExtractSize` | `number` | 4 GiB | Total size `extract` may unpack (zip-bomb protection) |
 | `csrfProtection` | `boolean` | `true` | Requires the `x-thefinder` header on `POST` requests |
-| `maxRequestSize` | `number` | largest of `chunkSize`, `maxEditSize`, `maxImageSize` + 1 MiB | Max `POST` body size; larger bodies are refused before they are read |
+| `maxRequestSize` | `number` | no limit | Max `POST` body size; larger bodies are refused before they are read. Leave room for one upload chunk (`chunkSize`) plus form overhead |
 
 ### `VolumeOptions`
 

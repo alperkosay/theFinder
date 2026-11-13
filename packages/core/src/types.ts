@@ -346,7 +346,7 @@ export interface TheFinderOptions {
   maxExtractSize?: number;
   /**
    * Max size of a POST body. Larger requests are refused before they are buffered, and before
-   * `authorize` runs. Default: the largest of `chunkSize`, `maxEditSize` and `maxImageSize`, plus 1 MiB.
+   * `authorize` runs. Must fit an upload chunk (`chunkSize`) plus form overhead. Default: no limit.
    */
   maxRequestSize?: number;
   /**

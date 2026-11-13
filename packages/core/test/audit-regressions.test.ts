@@ -156,6 +156,12 @@ describe("size limits apply to every write", () => {
     expect(tooBig.code).toBe("TOO_LARGE");
     expect(tooBig.pulled).toBeLessThan(total);
   });
+
+  it("POST bodies are not capped unless maxRequestSize is set", async () => {
+    const a = api(createTheFinder({ volumes: [{ id: "local", driver: localDriver({ root: dir }) }], maxEditSize: 4 * 1024 * 1024 }));
+    await a.ok("mkfile", { id: id("local", "/"), name: "big.txt", content: "a".repeat(3 * 1024 * 1024) });
+    expect((await readFile(join(dir, "big.txt"))).byteLength).toBe(3 * 1024 * 1024);
+  });
 });
 
 it("a renamed file on S3 is served with the type of its current name", async () => {

@@ -165,7 +165,7 @@ function json(body: unknown, status = 200): Response {
 // ---------------------------------------------------------------------------------------------
 
 export class TheFinder {
-  readonly options: Required<Pick<TheFinderOptions, "chunkSize" | "maxEditSize" | "searchLimit" | "maxRequestSize">> & TheFinderOptions;
+  readonly options: Required<Pick<TheFinderOptions, "chunkSize" | "maxEditSize" | "searchLimit">> & TheFinderOptions;
   private readonly volumes = new Map<string, Volume>();
   private readonly commands: Record<string, Command>;
   private readonly thumbs: ThumbnailService | null;
@@ -176,14 +176,10 @@ export class TheFinder {
 
   constructor(options: TheFinderOptions) {
     if (!options?.volumes?.length) throw new Error("theFinder: at least one volume is required");
-    const chunkSize = options.chunkSize ?? 5 * MiB;
-    const maxEditSize = options.maxEditSize ?? 5 * MiB;
     this.options = {
-      chunkSize,
-      maxEditSize,
+      chunkSize: 5 * MiB,
+      maxEditSize: 5 * MiB,
       searchLimit: 500,
-      // Large enough for an upload chunk, an edited text file or an edited image, plus form overhead.
-      maxRequestSize: Math.max(chunkSize, maxEditSize, options.maxImageSize ?? 60 * MiB) + MiB,
       ...options,
     };
     for (const v of options.volumes) {
@@ -1282,7 +1278,7 @@ async function bodyWithin(request: Request, limit: number): Promise<Response> {
   return new Response(bytes as BodyInit, { headers: { "content-type": request.headers.get("content-type") ?? "" } });
 }
 
-async function parseParams(request: Request, maxRequestSize: number): Promise<Params> {
+async function parseParams(request: Request, maxRequestSize: number | undefined): Promise<Params> {
   const url = new URL(request.url);
   const params: Params = {};
   // `params.__proto__ = {...}` would swap the prototype and smuggle in parameters nobody sent.
@@ -1295,7 +1291,7 @@ async function parseParams(request: Request, maxRequestSize: number): Promise<Pa
   if (request.method.toUpperCase() !== "POST") return params;
   const type = request.headers.get("content-type") ?? "";
   if (type.includes("application/json")) {
-    const raw = await bodyWithin(request, maxRequestSize);
+    const raw = maxRequestSize == null ? request : await bodyWithin(request, maxRequestSize);
     let body: unknown;
     try {
       body = await raw.json();
@@ -1304,7 +1300,7 @@ async function parseParams(request: Request, maxRequestSize: number): Promise<Pa
     }
     if (body && typeof body === "object" && !Array.isArray(body)) for (const [k, v] of Object.entries(body)) set(k, v);
   } else if (type.includes("multipart/form-data") || type.includes("application/x-www-form-urlencoded")) {
-    const raw = await bodyWithin(request, maxRequestSize);
+    const raw = maxRequestSize == null ? request : await bodyWithin(request, maxRequestSize);
     let form: FormData;
     try {
       form = await raw.formData();

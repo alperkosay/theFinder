@@ -47,7 +47,7 @@ const finder = createTheFinder({
 | `maxImageSize` | `number` | 60 MiB | `transform` için en büyük girdi |
 | `maxExtractSize` | `number` | 4 GiB | `extract` ile açılabilecek toplam boyut (zip bombası koruması) |
 | `csrfProtection` | `boolean` | `true` | `POST` isteklerinde `x-thefinder` başlığını zorunlu tutar |
-| `maxRequestSize` | `number` | `chunkSize`, `maxEditSize`, `maxImageSize` içinden en büyüğü + 1 MiB | En büyük `POST` gövdesi; daha büyük gövdeler okunmadan reddedilir |
+| `maxRequestSize` | `number` | sınırsız | En büyük `POST` gövdesi; daha büyük gövdeler okunmadan reddedilir. Bir yükleme parçasına (`chunkSize`) ve form ek yüküne yer bırakın |
 
 ### `VolumeOptions`
 
