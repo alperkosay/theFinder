@@ -376,6 +376,10 @@ export class TheFinder {
     const { vol, path } = this.target(p.id);
     const chain: VolumePath[] = ["/"];
     for (let cur = path; cur !== "/"; cur = dirname(cur)) chain.splice(1, 0, cur);
+    // Same rule as `info`, applied before anything is looked up (so a missing file is no hint
+    // either): every folder on the way must be readable, the item itself only through its folder.
+    for (const folder of chain.slice(1, -1)) vol.assertCan("read", folder);
+    if (path !== "/" && !vol.can("read", path)) vol.assertCan("read", dirname(path));
     return { entries: await mapLimit(chain, 6, (x) => this.entryAt(vol, x)) };
   }
 
@@ -634,7 +638,12 @@ export class TheFinder {
           skipped.push(id);
           continue;
         } else if (conflict === "overwrite") {
+          // Everything that could refuse the paste is checked before anything is deleted: the new
+          // item must be allowed at that path, and the replaced item must be deletable as a whole
+          // (a folder takes its contents with it, like `rm`).
+          dst.vol.assertCreatable(joinPath(dst.path, name));
           dst.vol.assertCan("delete", existing.path);
+          await this.assertTree(dst.vol, existing.path, "delete");
           // The replaced file stays in the history of its path.
           if (existing.kind === "file" && stat.kind === "file") await snapshot(dst.vol, existing, "replace");
           await dst.vol.driver.remove(existing.path);
@@ -716,6 +725,8 @@ export class TheFinder {
       let dir = dst.path;
       for (const segment of str(p, "relativePath", false).split("/").filter(Boolean)) {
         dir = joinPath(dir, vol.validateName(segment));
+        // Like mkdir and mkfile: each folder the file goes into must be writable, not only dst.
+        vol.assertCan("write", dir);
       }
       if (vol.isHiddenPath(dir)) throw new TheFinderError("INVALID_NAME", "Hidden folders are not allowed");
       vol.assertCreatable(dir);
