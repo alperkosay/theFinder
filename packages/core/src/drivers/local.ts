@@ -63,8 +63,12 @@ export class LocalDriver implements StorageDriver {
     return path === "/" ? this.root : nodePath.join(this.root, ...path.slice(1).split("/"));
   }
 
-  /** Resolves symlinks and verifies the real location is still inside the root. */
-  private async contained(abs: string): Promise<boolean> {
+  /**
+   * Resolves symlinks and verifies the real location is still inside the root, under the name that
+   * was asked for. `alias` is a real path the item may resolve to under another spelling (the source
+   * of a case-only rename).
+   */
+  private async contained(abs: string, alias?: string): Promise<boolean> {
     const realRoot = await this.getRealRoot();
     let real: string;
     try {
@@ -73,20 +77,24 @@ export class LocalDriver implements StorageDriver {
       return true; // does not exist yet; its parent is checked by the caller
     }
     if (real !== realRoot && !real.startsWith(realRoot + nodePath.sep)) return false;
-    // Windows 8.3 short names ("TF-TRA~1") reach folders under another name, e.g. the hidden
-    // ".tf-trash". realpath returns the long name: anything but the requested name is refused.
+    // Permissions, reserved names and hidden-path rules all look at the path as the client spelled
+    // it. A case-insensitive file system opens "/SECRET" for "/secret", and Windows 8.3 short names
+    // ("TF-TRA~1") reach ".tf-trash": anything that resolves under another spelling is refused.
     const rel = abs.slice(this.root.length);
-    return !(WINDOWS && /~\d/.test(rel) && real.slice(realRoot.length).toLowerCase() !== rel.toLowerCase());
+    const realRel = real.slice(realRoot.length);
+    if (realRel === rel || real === alias) return true;
+    if (sameIgnoringCase(realRel, rel)) return false;
+    return !(WINDOWS && /~\d/.test(rel));
   }
 
-  private async safe(path: VolumePath): Promise<string> {
+  private async safe(path: VolumePath, alias?: string): Promise<string> {
     await this.getRealRoot();
     if (WINDOWS && path.split("/").some((segment) => WINDOWS_UNSAFE.test(segment))) {
       throw new TheFinderError("FORBIDDEN", "This path is not valid on this system");
     }
     const abs = this.abs(path);
     const parentOk = path === "/" || (await this.contained(nodePath.dirname(abs)));
-    if (!parentOk || !(await this.contained(abs))) {
+    if (!parentOk || !(await this.contained(abs, alias))) {
       throw new TheFinderError("FORBIDDEN", "Path resolves outside of the volume");
     }
     return abs;
@@ -265,9 +273,11 @@ export class LocalDriver implements StorageDriver {
 
   async move(from: VolumePath, to: VolumePath): Promise<void> {
     const src = await this.safe(from);
-    const dst = await this.safe(to);
-    const caseOnly = src.toLowerCase() === dst.toLowerCase();
-    if (!caseOnly && (await exists(dst))) throw new TheFinderError("EXISTS", "Target already exists");
+    const caseOnly = sameIgnoringCase(from, to);
+    // A case-only rename's target is the source itself on a case-insensitive file system.
+    const dst = await this.safe(to, caseOnly ? await fs.realpath(src) : undefined);
+    // On a case-sensitive one it can be a different file, which rename() would silently replace.
+    if ((await exists(dst)) && !(caseOnly && (await sameFile(src, dst)))) throw new TheFinderError("EXISTS", "Target already exists");
     try {
       await fs.rename(src, dst);
     } catch (e) {
@@ -361,6 +371,16 @@ async function exists(abs: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Two spellings of one name; both case mappings, so "ſ" (long s) still matches "s". */
+function sameIgnoringCase(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase() || a.toUpperCase() === b.toUpperCase();
+}
+
+async function sameFile(a: string, b: string): Promise<boolean> {
+  const [x, y] = await Promise.all([fs.lstat(a, { bigint: true }), fs.lstat(b, { bigint: true })]);
+  return x.dev === y.dev && x.ino === y.ino;
 }
 
 /** Stores files on the local disk. Works on Node.js and Bun. */
