@@ -432,6 +432,7 @@ Tüm stiller `@layer thefinder` içindedir, yani katman dışında yazdığını
 - **CSRF:** Tüm değişiklik isteklerinde `x-thefinder` başlığı zorunludur; değişiklik yapan komutlar GET ile çalışmaz.
 - **Yetkilendirme:** Volume bazında `readOnly`, `permission(action, path)`, uzantı izin ve yasak listeleri, `maxUploadSize`; komut bazında `authorize` hook'u.
 - **Arşivler:** Zip-slip ve zip bombası koruması (`maxExtractSize`).
+- **İstek boyutu:** `POST` gövdeleri sınırlıdır (`maxRequestSize`) ve belleğe alınmadan reddedilir.
 - **İç klasörler:** `.tf-trash`, `.tf-versions` ve `.tf-thumbs` hiçbir komutla, aramayla veya `/uploads` adresiyle erişilemez; bu adla klasör de oluşturulamaz.
 - **Aktif içerik:** Yüklenen HTML ve SVG dosyaları sandbox CSP ile sunulur, uygulamanızın origin'inde script çalıştıramaz.
 - **Kimlik doğrulama:** Kimlik doğrulama `authorize` hook'unda yapılır; varsayılan ayarlarla API'ye herkes erişebilir. Ayrıntılar için [Yetkilendirme](#yetkilendirme) bölümüne bakın.

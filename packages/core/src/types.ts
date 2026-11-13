@@ -345,6 +345,11 @@ export interface TheFinderOptions {
   /** Max total uncompressed size when extracting an archive (zip bomb guard). Default: 4 GiB. */
   maxExtractSize?: number;
   /**
+   * Max size of a POST body. Larger requests are refused before they are buffered, and before
+   * `authorize` runs. Default: the largest of `chunkSize`, `maxEditSize` and `maxImageSize`, plus 1 MiB.
+   */
+  maxRequestSize?: number;
+  /**
    * Require the `x-thefinder` header on POST requests. Browsers cannot attach custom headers to
    * cross-site form submissions, so this blocks CSRF. Default: true.
    */

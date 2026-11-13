@@ -165,7 +165,7 @@ function json(body: unknown, status = 200): Response {
 // ---------------------------------------------------------------------------------------------
 
 export class TheFinder {
-  readonly options: Required<Pick<TheFinderOptions, "chunkSize" | "maxEditSize" | "searchLimit">> & TheFinderOptions;
+  readonly options: Required<Pick<TheFinderOptions, "chunkSize" | "maxEditSize" | "searchLimit" | "maxRequestSize">> & TheFinderOptions;
   private readonly volumes = new Map<string, Volume>();
   private readonly commands: Record<string, Command>;
   private readonly thumbs: ThumbnailService | null;
@@ -176,10 +176,14 @@ export class TheFinder {
 
   constructor(options: TheFinderOptions) {
     if (!options?.volumes?.length) throw new Error("theFinder: at least one volume is required");
+    const chunkSize = options.chunkSize ?? 5 * MiB;
+    const maxEditSize = options.maxEditSize ?? 5 * MiB;
     this.options = {
-      chunkSize: 5 * MiB,
-      maxEditSize: 5 * MiB,
+      chunkSize,
+      maxEditSize,
       searchLimit: 500,
+      // Large enough for an upload chunk, an edited text file or an edited image, plus form overhead.
+      maxRequestSize: Math.max(chunkSize, maxEditSize, options.maxImageSize ?? 60 * MiB) + MiB,
       ...options,
     };
     for (const v of options.volumes) {
@@ -237,14 +241,15 @@ export class TheFinder {
       if (method !== "GET" && method !== "HEAD" && method !== "POST") {
         return json({ ok: false, error: { code: "BAD_REQUEST", message: "Method not allowed" } }, 405);
       }
-      const params = await parseParams(request);
+      // Checked before the body is read, so a request that will be refused costs nothing to reject.
+      if (method === "POST" && this.options.csrfProtection !== false && !request.headers.has(CSRF_HEADER)) {
+        throw new TheFinderError("FORBIDDEN", `Missing ${CSRF_HEADER} header`);
+      }
+      const params = await parseParams(request, this.options.maxRequestSize);
       const cmd = typeof params.cmd === "string" ? params.cmd : "";
       if (!Object.hasOwn(this.commands, cmd)) throw new TheFinderError("UNKNOWN_COMMAND", `Unknown command "${cmd}"`);
       if (method !== "POST" && !READ_COMMANDS.has(cmd)) {
         throw new TheFinderError("BAD_REQUEST", `"${cmd}" requires POST`);
-      }
-      if (method === "POST" && this.options.csrfProtection !== false && !request.headers.has(CSRF_HEADER)) {
-        throw new TheFinderError("FORBIDDEN", `Missing ${CSRF_HEADER} header`);
       }
       ctx = { cmd, params, request };
       const result = await this.run(ctx);
@@ -468,7 +473,9 @@ export class TheFinder {
     const target = joinPath(path, name);
     vol.assertCreatable(target);
     if (await vol.driver.stat(target)) throw new TheFinderError("EXISTS", `"${name}" already exists`);
-    await vol.driver.write(target, typeof p.content === "string" ? p.content : "");
+    const content = typeof p.content === "string" ? p.content : "";
+    this.assertWriteSize(vol, encoder.encode(content).byteLength, true);
+    await vol.driver.write(target, content);
     return { entry: await this.entryAt(vol, target) };
   }
 
@@ -915,6 +922,7 @@ export class TheFinder {
       const name = await dst.vol.uniqueName(dst.path, requested, false);
       const target = joinPath(dst.path, name);
       dst.vol.assertCreatable(target);
+      this.assertWriteSize(dst.vol, data.byteLength, !blob);
       await dst.vol.driver.write(target, data);
       return { entry: await this.entryAt(dst.vol, target), created: true };
     }
@@ -923,14 +931,19 @@ export class TheFinder {
     vol.assertCan("write", path);
     const stat = await vol.stat(path);
     if (stat.kind !== "file") throw new TheFinderError("NOT_A_FILE", "Not a file");
-    if (!blob && data.byteLength > this.options.maxEditSize) throw new TheFinderError("TOO_LARGE", "Content is too large");
-    const max = vol.options.maxUploadSize;
-    if (max != null && data.byteLength > max) throw new TheFinderError("TOO_LARGE", "Content is too large");
+    this.assertWriteSize(vol, data.byteLength, !blob);
     await snapshot(vol, stat, reasonOf(p, "edit"));
     await vol.driver.write(path, data);
     changes.push({ type: "replaced", volume: vol.id, path });
     if (blob) await this.thumbs?.forget(vol, path);
     return { entry: await this.entryAt(vol, path), created: false };
+  }
+
+  /** Size rules for content written in one request: the volume's upload limit, and the editor limit for text. */
+  private assertWriteSize(vol: Volume, bytes: number, text: boolean): void {
+    if (text && bytes > this.options.maxEditSize) throw new TheFinderError("TOO_LARGE", "Content is too large");
+    const max = vol.options.maxUploadSize;
+    if (max != null && bytes > max) throw new TheFinderError("TOO_LARGE", "Content is too large");
   }
 
   // --- archives ------------------------------------------------------------------------------
@@ -1256,7 +1269,20 @@ export class TheFinder {
   }
 }
 
-async function parseParams(request: Request): Promise<Params> {
+/** Reads a POST body into memory, refusing it as soon as it grows past `limit`. */
+async function bodyWithin(request: Request, limit: number): Promise<Response> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit) throw new TheFinderError("TOO_LARGE", "Request body is too large");
+  const bytes = request.body
+    ? await readAll(request.body, limit).catch((e) => {
+        if (e instanceof TheFinderError && e.code === "TOO_LARGE") throw new TheFinderError("TOO_LARGE", "Request body is too large");
+        throw e;
+      })
+    : new Uint8Array();
+  return new Response(bytes as BodyInit, { headers: { "content-type": request.headers.get("content-type") ?? "" } });
+}
+
+async function parseParams(request: Request, maxRequestSize: number): Promise<Params> {
   const url = new URL(request.url);
   const params: Params = {};
   // `params.__proto__ = {...}` would swap the prototype and smuggle in parameters nobody sent.
@@ -1269,15 +1295,22 @@ async function parseParams(request: Request): Promise<Params> {
   if (request.method.toUpperCase() !== "POST") return params;
   const type = request.headers.get("content-type") ?? "";
   if (type.includes("application/json")) {
+    const raw = await bodyWithin(request, maxRequestSize);
     let body: unknown;
     try {
-      body = await request.json();
+      body = await raw.json();
     } catch {
       throw new TheFinderError("BAD_REQUEST", "Invalid JSON body");
     }
     if (body && typeof body === "object" && !Array.isArray(body)) for (const [k, v] of Object.entries(body)) set(k, v);
   } else if (type.includes("multipart/form-data") || type.includes("application/x-www-form-urlencoded")) {
-    const form = await request.formData();
+    const raw = await bodyWithin(request, maxRequestSize);
+    let form: FormData;
+    try {
+      form = await raw.formData();
+    } catch {
+      throw new TheFinderError("BAD_REQUEST", "Invalid form body");
+    }
     for (const [k, v] of form) set(k, v);
   }
   return params;
