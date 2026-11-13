@@ -1,9 +1,9 @@
 import { encodeId } from "./id";
 import { mimeOf } from "./mime";
-import { basename, extname } from "./path";
+import { basename, dirname, extname } from "./path";
 import { THUMBS_ROOT } from "./thumbnails";
 import { TRASH_ROOT } from "./trash";
-import type { DriverStat, StorageStats, UsageCategory, VersionedFile } from "./types";
+import type { DriverStat, StorageStats, UsageCategory, VersionedFile, VolumePath } from "./types";
 import { groupExists, isVersionsPath, scanGroups } from "./versions";
 import type { Volume } from "./volume";
 import { mapLimit } from "./stream";
@@ -91,8 +91,31 @@ const under = (root: string, path: string) => path === root || path.startsWith(r
 const LARGEST = 12;
 const VERSIONED_ITEMS = 200;
 
-/** Scans a whole volume once and summarizes where the space goes. */
+/**
+ * Whether the `permission` callback lets the user read `path` and every folder above it, the way a
+ * walk from the root would reach it. Memoized per folder: one stats scan asks for every path.
+ */
+function readablePaths(vol: Volume): (path: VolumePath) => boolean {
+  if (!vol.options.permission) return () => true;
+  const known = new Map<VolumePath, boolean>();
+  const readable = (path: VolumePath): boolean => {
+    if (path === "/") return true;
+    let ok = known.get(path);
+    if (ok === undefined) {
+      ok = readable(dirname(path)) && vol.can("read", path);
+      known.set(path, ok);
+    }
+    return ok;
+  };
+  return readable;
+}
+
+/**
+ * Scans a whole volume once and summarizes where the space goes. Totals cover the whole volume;
+ * items the user may not read never appear by name (largest files, version histories).
+ */
 export async function collectStats(vol: Volume): Promise<StorageStats> {
+  const readable = readablePaths(vol);
   const [{ items, truncated }, capacity] = await Promise.all([walkAll(vol.driver, "/"), vol.driver.capacity?.().catch(() => null) ?? null]);
 
   const categories = Object.fromEntries(
@@ -135,14 +158,15 @@ export async function collectStats(vol: Volume): Promise<StorageStats> {
     const bucket = categories[usageCategory(s.name)];
     bucket.files++;
     bucket.size += s.size;
-    if (largest.length < LARGEST || s.size > largest[largest.length - 1]!.size) {
+    if (readable(s.path) && (largest.length < LARGEST || s.size > largest[largest.length - 1]!.size)) {
       largest.push(s);
       largest.sort((a, b) => b.size - a.size);
       largest = largest.slice(0, LARGEST);
     }
   }
 
-  const groups = (await scanGroups(vol, versionItems)).filter((g) => g.versions.length);
+  // A history whose file path is unknown cannot be checked, so it is only listed without a permission callback.
+  const groups = (await scanGroups(vol, versionItems)).filter((g) => g.versions.length && (g.path ? readable(g.path) : !vol.options.permission));
   const exists = await mapLimit(groups, 8, (g) => groupExists(vol, g));
   const versioned: VersionedFile[] = groups.map((g, i) => ({
     id: encodeId(vol.id, g.path ?? g.dir),

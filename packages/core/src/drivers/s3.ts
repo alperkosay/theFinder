@@ -379,13 +379,13 @@ export class S3Driver implements StorageDriver {
     await this.checkedXml(res);
   }
 
-  private async listParts(key: string, uploadId: string): Promise<{ n: number; etag: string }[]> {
-    const parts: { n: number; etag: string }[] = [];
+  private async listParts(key: string, uploadId: string): Promise<{ n: number; etag: string; size: number }[]> {
+    const parts: { n: number; etag: string; size: number }[] = [];
     let marker: string | undefined;
     for (;;) {
       const res = await this.send("GET", key, { query: { uploadId, "part-number-marker": marker } });
       const xml = await res.text();
-      for (const b of blocks(xml, "Part")) parts.push({ n: Number(value(b, "PartNumber")), etag: value(b, "ETag") ?? "" });
+      for (const b of blocks(xml, "Part")) parts.push({ n: Number(value(b, "PartNumber")), etag: value(b, "ETag") ?? "", size: Number(value(b, "Size")) });
       if (value(xml, "IsTruncated") !== "true") break;
       marker = value(xml, "NextPartNumberMarker");
       if (!marker) break;
@@ -413,6 +413,13 @@ export class S3Driver implements StorageDriver {
       if (parts.length !== chunk.total) {
         await this.abortUpload(chunk.path, uploadId);
         throw new TheFinderError("BAD_REQUEST", `Upload incomplete: ${parts.length} of ${chunk.total} parts received`);
+      }
+      // Parts are stored as sent: only their sum says how big the file really is. The engine
+      // checked the declared size against maxUploadSize, so the two must agree.
+      const received = parts.reduce((n, part) => n + part.size, 0);
+      if (received !== chunk.size) {
+        await this.abortUpload(chunk.path, uploadId);
+        throw new TheFinderError("BAD_REQUEST", `Upload incomplete: received ${received} of ${chunk.size} bytes`);
       }
       await this.completeMultipart(key, uploadId, parts);
     }
@@ -457,6 +464,9 @@ export class S3Driver implements StorageDriver {
     const filename = options.filename ?? path.slice(path.lastIndexOf("/") + 1);
     const url = this.url(this.key(path), {
       "response-content-disposition": contentDisposition(options.download ? "attachment" : "inline", filename),
+      // The stored Content-Type is the one of the name at upload time and survives renames
+      // ("x.html" renamed "x.txt"): pin the type of the current name instead.
+      "response-content-type": mimeOf(filename),
     });
     return presignUrl({ url, region: this.region, credentials: this.credentials, expiresIn: options.expiresIn ?? this.expiresIn });
   }

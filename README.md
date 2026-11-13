@@ -432,6 +432,7 @@ All styles live in `@layer thefinder`, so any rule you write outside the layer w
 - **CSRF:** Every mutating request needs the `x-thefinder` header; mutating commands do not run over GET.
 - **Authorization:** Per volume `readOnly`, `permission(action, path)`, extension allow and deny lists, `maxUploadSize`; per command the `authorize` hook.
 - **Archives:** Zip-slip and zip-bomb protection (`maxExtractSize`).
+- **Request size:** set `maxRequestSize` to cap `POST` bodies; larger ones are refused before they are buffered.
 - **Internal folders:** `.tf-trash`, `.tf-versions` and `.tf-thumbs` cannot be reached by any command, search or the `/uploads` URL, and no folder can be created with those names.
 - **Active content:** Uploaded HTML and SVG files are served with a sandbox CSP, so they cannot run scripts on your app's origin.
 - **Authentication:** Authentication happens in the `authorize` hook; with default settings anyone can reach the API. See [Authorization](#authorization) for details.

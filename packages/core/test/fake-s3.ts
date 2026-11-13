@@ -83,7 +83,7 @@ export function fakeS3(bucket = "test") {
       const parts = uploads.get(q.get("uploadId")!);
       if (!parts) return xml("<Error><Code>NoSuchUpload</Code></Error>", 404);
       return xml(
-        `<ListPartsResult><IsTruncated>false</IsTruncated>${[...parts.keys()].map((n) => `<Part><PartNumber>${n}</PartNumber><ETag>&quot;etag-${n}&quot;</ETag></Part>`).join("")}</ListPartsResult>`,
+        `<ListPartsResult><IsTruncated>false</IsTruncated>${[...parts.entries()].map(([n, data]) => `<Part><PartNumber>${n}</PartNumber><ETag>&quot;etag-${n}&quot;</ETag><Size>${data.length}</Size></Part>`).join("")}</ListPartsResult>`,
       );
     }
     if (method === "POST" && q.has("uploadId")) {
